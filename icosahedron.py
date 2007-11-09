@@ -2,10 +2,6 @@
 """
 import math, mesh
 
-class Face(mesh.Triangle):
-    # TODO: write me
-    pass
-
 # Cartesian coordinates for the 12 vertices of icosahedron
 vertices = { 1: mesh.Vertex( 0.420152426708710003,  0.078145249402782959,  0.904082550615019298),
              2: mesh.Vertex( 0.995009439436241649, -0.091347795276427931,  0.040147175877166645),
