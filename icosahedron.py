@@ -130,12 +130,12 @@ def vertex2triangle(vertex):
     
         Return Triangle object.
     """
-    distances = [(vertex.distance(triangle.center()), triangle) for triangle in triangles.values()]
+    distances = [(vertex.distance(tri.center()), tri) for tri in triangles.values()]
     distances.sort()
     
     triangle = distances[0][1]
     
-    # short circuit for now
+    # short circuit for now, maybe do the lcd later
     return triangle
     
     # Now the LCD triangle is determined.
