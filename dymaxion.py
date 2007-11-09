@@ -164,23 +164,23 @@ def cartesian2spherical(x, y, z):
         a = deg2rad(360.0)
         
     if x == 0.0 and y > 0.0:
-        lon = deg2rad(90.0)
+        phi = deg2rad(90.0)
 
     if x == 0.0 and y < 0.0:
-        lon = deg2rad(270.0)
+        phi = deg2rad(270.0)
 
     if x > 0.0 and y == 0.0:
-        lon = deg2rad(0.0)
+        phi = deg2rad(0.0)
 
     if x < 0.0 and y == 0.0:
-        lon = deg2rad(180.0)
+        phi = deg2rad(180.0)
 
     if x != 0.0 and y != 0.0:
-        lon = math.atan(y / x) + a
+        phi = math.atan(y / x) + a
 
-    lat = math.acos(z)
+    theta = math.acos(z)
     
-    return lon, lat
+    return phi, theta
 
 def assign_triangle(x, y, z):
     """ Determine which triangle and LCD triangle the point is in.
