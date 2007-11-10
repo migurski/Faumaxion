@@ -1,4 +1,4 @@
-import sys, gzip, re, random, math
+import sys, gzip, re, random, math, cPickle
 import gnomonic, icosahedron, mesh
 import PIL.Image as Image
 from PIL.ImageDraw import ImageDraw
@@ -32,17 +32,17 @@ re_intersections = re.compile(r'^(-?\d*[05]), (-?\d*[05]): #\w{6} \((\d+), (\d+)
 re_intersections = re.compile(r'^(-?\d*[02468]), (-?\d*[02468]): #\w{6} \((\d+), (\d+), (\d+)\)')
 re_intersections = re.compile(r'^(-?\d*[\d]), (-?\d*[\d]): #\w{6} \((\d+), (\d+), (\d+)\)')
 
-try:
-    the_one_face = icosahedron.faces[int(sys.argv[1])]
-except:
-    the_one_face = None
+print 'Loading colors...'
+colors = cPickle.load(gzip.open('world.topo.bathy-colors.pickle.gz'))
 
-for line in gzip.open('world.topo.bathy-colors.txt.gz'):
-    intersection = re_intersections.match(line)
+print 'Projecting points...'
+for lat in range(-90, 90, 2):
+    for lon in range(-180, 180, 2):
+        try:
+            r, g, b = colors[lat, lon]
+        except KeyError:
+            continue
 
-    if intersection:
-        lat, lon, r, g, b = [int(intersection.group(i)) for i in (1, 2, 3, 4, 5)]
-        
         # Convert the given (long.,lat.) coordinate into spherical
         # polar coordinates (r, theta, phi) with radius=1.
         # Angles are given in radians, NOT degrees.
@@ -55,9 +55,6 @@ for line in gzip.open('world.topo.bathy-colors.txt.gz'):
         # determine which of the 20 spherical icosahedron faces
         # the given point is in and the LCD face.
         face = icosahedron.vertex2face(vertex)
-        
-        if the_one_face and face is not the_one_face:
-            continue
         
         x, y = face.project_latlon(lat, lon)
         
@@ -77,37 +74,6 @@ max_y = max([y for (x, y, lat, lon, color) in points])
 
 print (min_x, min_y), (max_x, max_y)
 
-for f, face in icosahedron.faces.items():
-    if the_one_face and face is not the_one_face:
-        continue
-        
-    print 'Center', face.center()
-    theta, phi = icosahedron.vertex2spherical(face.center())
-    lat, lon = icosahedron.spherical2latlon(theta, phi)
-    x, y = face.project_latlon(lat, lon)
-    points.append((x, y, lat, lon, (0xFF, 0xFF, 0xFF)))
-    
-    for vertex in face.vertices():
-        print 'Corner', vertex
-        theta, phi = icosahedron.vertex2spherical(vertex)
-        lat, lon = icosahedron.spherical2latlon(theta, phi)
-        x, y = face.project_latlon(lat, lon)
-        points.append((x, y, lat, lon, (0xFF, 0xFF, 0x00)))
-    
-    for neighbor in face.neighbors():
-        print 'Neighbor center', neighbor.center()
-        theta, phi = icosahedron.vertex2spherical(neighbor.center())
-        lat, lon = icosahedron.spherical2latlon(theta, phi)
-        x, y = face.project_latlon(lat, lon)
-        points.append((x, y, lat, lon, (0xFF, 0x66, 0x00)))
-
-min_x = min([x for (x, y, lat, lon, color) in points])
-min_y = min([y for (x, y, lat, lon, color) in points])
-max_x = max([x for (x, y, lat, lon, color) in points])
-max_y = max([y for (x, y, lat, lon, color) in points])
-
-print (min_x, min_y), (max_x, max_y)
-
 top, left, bottom, right = 10, 10, img.size[1] - 10, img.size[0] - 10
 
 mx = (right - left) / (max_x - min_x)
@@ -118,7 +84,7 @@ mx, my = min(mx, my), min(mx, my)
 bx = left - mx * min_x
 by = top - my * min_y
 
-
+print 'Drawing points...'
 for (x, y, lat, lon, color) in points:
     x, y = mx * x + bx, my * y + by
     draw.rectangle((x-3, y-3, x, y), fill=color)
