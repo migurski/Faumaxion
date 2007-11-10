@@ -5,6 +5,13 @@ import math, mesh, gnomonic
 class Face(mesh.Triangle):
     """ A Triangle with some methods specific to this icosahedron.
     """
+    def __init__(self, edgeA, edgeB, edgeC):
+        mesh.Triangle.__init__(self, edgeA, edgeB, edgeC)
+        
+        # defaults, to flip right-side up and scale edge length to one
+        self.ax, self.bx, self.cx = 1/average_edge_length, 0, 0
+        self.ay, self.by, self.cy = 0, -1/average_edge_length, 0
+        
     def center_latlon(self):
         """ Return lat, lon of center in degrees.
         """
@@ -28,61 +35,8 @@ class Face(mesh.Triangle):
         
         x, y = gnomonic.project(*map(gnomonic.deg2rad, (lat, lon, lat0, lon0)))
         
-        return x, -y
-
-# Cartesian coordinates for the 12 vertices of icosahedron
-vertices = { 1: mesh.Vertex( 0.420152426708710003,  0.078145249402782959,  0.904082550615019298),
-             2: mesh.Vertex( 0.995009439436241649, -0.091347795276427931,  0.040147175877166645),
-             3: mesh.Vertex( 0.518836730327364437,  0.835420380378235850,  0.181331837557262454),
-             4: mesh.Vertex(-0.414682225320335218,  0.655962405434800777,  0.630675807891475371),
-             5: mesh.Vertex(-0.515455959944041808, -0.381716898287133011,  0.767200992517747538),
-             6: mesh.Vertex( 0.355781402532944713, -0.843580002466178147,  0.402234226602925571),
-             7: mesh.Vertex( 0.414682225320335218, -0.655962405434800777, -0.630675807891475371),
-             8: mesh.Vertex( 0.515455959944041808,  0.381716898287133011, -0.767200992517747538),
-             9: mesh.Vertex(-0.355781402532944713,  0.843580002466178147, -0.402234226602925571),
-            10: mesh.Vertex(-0.995009439436241649,  0.091347795276427931, -0.040147175877166645),
-            11: mesh.Vertex(-0.518836730327364437, -0.835420380378235850, -0.181331837557262454),
-            12: mesh.Vertex(-0.420152426708710003, -0.078145249402782959, -0.904082550615019298)}
-
-# Edges and Faces
-edges = []
-faces = {}
-
-for t, v1, v2 in [(1, 1, 3), (1, 3, 2), (1, 2, 1), (2, 1, 4), (2, 4, 3), (2, 3, 1), (3, 1, 5), (3, 5, 4), (3, 4, 1), (4, 1, 6), (4, 6, 5), (4, 5, 1), (5, 1, 2), (5, 2, 6), (5, 6, 1), (6, 2, 3), (6, 3, 8), (6, 8, 2), (7, 3, 9), (7, 9, 8), (7, 8, 3), (8, 3, 4), (8, 4, 9), (8, 9, 3), (9, 4, 10), (9, 10, 9), (9, 9, 4), (10, 4, 5), (10, 5, 10), (10, 10, 4), (11, 5, 11), (11, 11, 10), (11, 10, 5), (12, 5, 6), (12, 6, 11), (12, 11, 5), (13, 6, 7), (13, 7, 11), (13, 11, 6), (14, 2, 7), (14, 7, 6), (14, 6, 2), (15, 2, 8), (15, 8, 7), (15, 7, 2), (16, 8, 9), (16, 9, 12), (16, 12, 8), (17, 9, 10), (17, 10, 12), (17, 12, 9), (18, 10, 11), (18, 11, 12), (18, 12, 10), (19, 11, 7), (19, 7, 12), (19, 12, 11), (20, 8, 12), (20, 12, 7), (20, 7, 8)]:
-    
-    # assign a face
-    if faces.has_key(t):
-        face = faces[t]
-    else:
-        face = faces[t] = Face(None, None, None)
-
-    # this edge has two vertices
-    vertexA = vertices[v1]
-    vertexB = vertices[v2]
-    
-    # see if the edge already exists in the opposite direction
-    edge = False
-    for e in edges:
-        if e.vertexB is vertexA and e.vertexA is vertexB:
-            edge = e
-            break
-    
-    if edge:
-        # edge exists, so assign it the appropriate face
-        edge.triangleB = face
-    else:
-        # new edge, just one face for now
-        edge = mesh.Edge(vertexA, vertexB, face, None, 1)
-        edges.append(edge)
-
-    if face.edgeA is None:
-        face.edgeA = edge
-    
-    elif face.edgeB is None:
-        face.edgeB = edge
-    
-    elif face.edgeC is None:
-        face.edgeC = edge
+        return (self.ax * x + self.bx * y + self.cx), \
+               (self.ay * x + self.by * y + self.cy)
 
 def deg2rad(degrees):
     return degrees * math.pi / 180.0
@@ -178,6 +132,63 @@ def vertex2face(vertex):
     if v3_distance <= v2_distance and v2_distance <= v1_distance: lcd = 4
 
     return face, lcd
+
+# Refers to the projected, two-dimensional length
+average_edge_length = 1.323169076499213670
+
+# Cartesian coordinates for the 12 vertices of icosahedron
+vertices = { 1: mesh.Vertex( 0.420152426708710003,  0.078145249402782959,  0.904082550615019298),
+             2: mesh.Vertex( 0.995009439436241649, -0.091347795276427931,  0.040147175877166645),
+             3: mesh.Vertex( 0.518836730327364437,  0.835420380378235850,  0.181331837557262454),
+             4: mesh.Vertex(-0.414682225320335218,  0.655962405434800777,  0.630675807891475371),
+             5: mesh.Vertex(-0.515455959944041808, -0.381716898287133011,  0.767200992517747538),
+             6: mesh.Vertex( 0.355781402532944713, -0.843580002466178147,  0.402234226602925571),
+             7: mesh.Vertex( 0.414682225320335218, -0.655962405434800777, -0.630675807891475371),
+             8: mesh.Vertex( 0.515455959944041808,  0.381716898287133011, -0.767200992517747538),
+             9: mesh.Vertex(-0.355781402532944713,  0.843580002466178147, -0.402234226602925571),
+            10: mesh.Vertex(-0.995009439436241649,  0.091347795276427931, -0.040147175877166645),
+            11: mesh.Vertex(-0.518836730327364437, -0.835420380378235850, -0.181331837557262454),
+            12: mesh.Vertex(-0.420152426708710003, -0.078145249402782959, -0.904082550615019298)}
+
+# Edges and Faces
+edges = []
+faces = {}
+
+for t, v1, v2 in [(1, 1, 3), (1, 3, 2), (1, 2, 1), (2, 1, 4), (2, 4, 3), (2, 3, 1), (3, 1, 5), (3, 5, 4), (3, 4, 1), (4, 1, 6), (4, 6, 5), (4, 5, 1), (5, 1, 2), (5, 2, 6), (5, 6, 1), (6, 2, 3), (6, 3, 8), (6, 8, 2), (7, 3, 9), (7, 9, 8), (7, 8, 3), (8, 3, 4), (8, 4, 9), (8, 9, 3), (9, 4, 10), (9, 10, 9), (9, 9, 4), (10, 4, 5), (10, 5, 10), (10, 10, 4), (11, 5, 11), (11, 11, 10), (11, 10, 5), (12, 5, 6), (12, 6, 11), (12, 11, 5), (13, 6, 7), (13, 7, 11), (13, 11, 6), (14, 2, 7), (14, 7, 6), (14, 6, 2), (15, 2, 8), (15, 8, 7), (15, 7, 2), (16, 8, 9), (16, 9, 12), (16, 12, 8), (17, 9, 10), (17, 10, 12), (17, 12, 9), (18, 10, 11), (18, 11, 12), (18, 12, 10), (19, 11, 7), (19, 7, 12), (19, 12, 11), (20, 8, 12), (20, 12, 7), (20, 7, 8)]:
+    
+    # assign a face
+    if faces.has_key(t):
+        face = faces[t]
+    else:
+        face = faces[t] = Face(None, None, None)
+
+    # this edge has two vertices
+    vertexA = vertices[v1]
+    vertexB = vertices[v2]
+    
+    # see if the edge already exists in the opposite direction
+    edge = False
+    for e in edges:
+        if e.vertexB is vertexA and e.vertexA is vertexB:
+            edge = e
+            break
+    
+    if edge:
+        # edge exists, so assign it the appropriate face
+        edge.triangleB = face
+    else:
+        # new edge, just one face for now
+        edge = mesh.Edge(vertexA, vertexB, face, None, 1)
+        edges.append(edge)
+
+    if face.edgeA is None:
+        face.edgeA = edge
+    
+    elif face.edgeB is None:
+        face.edgeB = edge
+    
+    elif face.edgeC is None:
+        face.edgeC = edge
 
 
 
