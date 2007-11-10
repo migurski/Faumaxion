@@ -1,6 +1,34 @@
 """
 """
-import math, mesh
+import math, mesh, gnomonic
+
+class Face(mesh.Triangle):
+    """ A Triangle with some methods specific to this icosahedron.
+    """
+    def center_latlon(self):
+        """ Return lat, lon of center in degrees.
+        """
+        theta, phi = vertex2spherical(self.center())
+        return spherical2latlon(theta, phi)
+
+    def project_vertex(self, vertex):
+        """ Return x, y position of projected vertex on this face.
+        """
+        theta, phi = vertex2spherical(vertex)
+        lat, lon = spherical2latlon(theta, phi)
+        
+        return self.project_latlon(lat, lon)
+
+    def project_latlon(self, lat, lon):
+        """ Return x, y position of projected lat, lon on this face.
+        
+            Arguments given in degrees.
+        """
+        lat0, lon0 = self.center_latlon()
+        
+        x, y = gnomonic.project(*map(gnomonic.deg2rad, (lat, lon, lat0, lon0)))
+        
+        return x, -y
 
 # Cartesian coordinates for the 12 vertices of icosahedron
 vertices = { 1: mesh.Vertex( 0.420152426708710003,  0.078145249402782959,  0.904082550615019298),
@@ -16,17 +44,17 @@ vertices = { 1: mesh.Vertex( 0.420152426708710003,  0.078145249402782959,  0.904
             11: mesh.Vertex(-0.518836730327364437, -0.835420380378235850, -0.181331837557262454),
             12: mesh.Vertex(-0.420152426708710003, -0.078145249402782959, -0.904082550615019298)}
 
-# Edges and Triangles
+# Edges and Faces
 edges = []
-triangles = {}
+faces = {}
 
 for t, v1, v2 in [(1, 1, 3), (1, 3, 2), (1, 2, 1), (2, 1, 4), (2, 4, 3), (2, 3, 1), (3, 1, 5), (3, 5, 4), (3, 4, 1), (4, 1, 6), (4, 6, 5), (4, 5, 1), (5, 1, 2), (5, 2, 6), (5, 6, 1), (6, 2, 3), (6, 3, 8), (6, 8, 2), (7, 3, 9), (7, 9, 8), (7, 8, 3), (8, 3, 4), (8, 4, 9), (8, 9, 3), (9, 4, 10), (9, 10, 9), (9, 9, 4), (10, 4, 5), (10, 5, 10), (10, 10, 4), (11, 5, 11), (11, 11, 10), (11, 10, 5), (12, 5, 6), (12, 6, 11), (12, 11, 5), (13, 6, 7), (13, 7, 11), (13, 11, 6), (14, 2, 7), (14, 7, 6), (14, 6, 2), (15, 2, 8), (15, 8, 7), (15, 7, 2), (16, 8, 9), (16, 9, 12), (16, 12, 8), (17, 9, 10), (17, 10, 12), (17, 12, 9), (18, 10, 11), (18, 11, 12), (18, 12, 10), (19, 11, 7), (19, 7, 12), (19, 12, 11), (20, 8, 12), (20, 12, 7), (20, 7, 8)]:
     
-    # assign a triangle
-    if triangles.has_key(t):
-        triangle = triangles[t]
+    # assign a face
+    if faces.has_key(t):
+        face = faces[t]
     else:
-        triangle = triangles[t] = mesh.Triangle(None, None, None)
+        face = faces[t] = Face(None, None, None)
 
     # this edge has two vertices
     vertexA = vertices[v1]
@@ -40,20 +68,21 @@ for t, v1, v2 in [(1, 1, 3), (1, 3, 2), (1, 2, 1), (2, 1, 4), (2, 4, 3), (2, 3, 
             break
     
     if edge:
-        # edge exists, so assign it the appropriate triangle
-        edge.triangleB = triangle
+        # edge exists, so assign it the appropriate face
+        edge.triangleB = face
     else:
-        # new edge, just one triangle for now
-        edge = mesh.Edge(vertexA, vertexB, triangle, None, 1)
+        # new edge, just one face for now
+        edge = mesh.Edge(vertexA, vertexB, face, None, 1)
+        edges.append(edge)
 
-    if triangle.edgeA is None:
-        triangle.edgeA = edge
+    if face.edgeA is None:
+        face.edgeA = edge
     
-    elif triangle.edgeB is None:
-        triangle.edgeB = edge
+    elif face.edgeB is None:
+        face.edgeB = edge
     
-    elif triangle.edgeC is None:
-        triangle.edgeC = edge
+    elif face.edgeC is None:
+        face.edgeC = edge
 
 def deg2rad(degrees):
     return degrees * math.pi / 180.0
@@ -125,21 +154,21 @@ def vertex2spherical(vertex):
     
     return theta, phi
 
-def vertex2triangle(vertex):
-    """ Determine which triangle the point is in.
+def vertex2face(vertex):
+    """ Determine which face the point is in.
     
-        Return Triangle object.
+        Return Face object.
     """
-    distances = [(vertex.distance(tri.center()), tri) for tri in triangles.values()]
+    distances = [(vertex.distance(face.center()), face) for face in faces.values()]
     distances.sort()
     
-    triangle = distances[0][1]
+    face = distances[0][1]
     
     # short circuit for now, maybe do the lcd later
-    return triangle
+    return face
     
     # Now the LCD triangle is determined.
-    v1_distance, v2_distance, v3_distance = [vertex.distance(v) for v in triangle.vertices()]
+    v1_distance, v2_distance, v3_distance = [vertex.distance(v) for v in face.vertices()]
 
     if v1_distance <= v2_distance and v2_distance <= v3_distance: lcd = 1
     if v1_distance <= v3_distance and v3_distance <= v2_distance: lcd = 6
@@ -148,7 +177,7 @@ def vertex2triangle(vertex):
     if v3_distance <= v1_distance and v1_distance <= v2_distance: lcd = 5
     if v3_distance <= v2_distance and v2_distance <= v1_distance: lcd = 4
 
-    return triangle, lcd
+    return face, lcd
 
 
 

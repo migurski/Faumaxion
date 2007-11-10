@@ -23,6 +23,9 @@ class Edge:
         self.triangleB = triangleB
         self.strength = strength
 
+    def triangles(self):
+        return (self.triangleA, self.triangleB)
+
 class Triangle:
     def __init__(self, edgeA, edgeB, edgeC):
         self.edgeA = edgeA
@@ -43,6 +46,21 @@ class Triangle:
 
         return self._center
             
+    def edges(self):
+        return (self.edgeA, self.edgeB, self.edgeC)
+    
+    def neighbors(self):
+        """ Return neighboring triangles, in order.
+        """
+        neighbors = []
+        
+        for edge in self.edges():
+            for neighbor in edge.triangles():
+                if neighbor is not self:
+                    neighbors.append(neighbor)
+
+        return neighbors
+
     def vertices(self):
         """ Return three vertices, in order.
         """
@@ -60,7 +78,7 @@ class Triangle:
         elif eAvA is eBvA:
             v1, v2 = eAvB, eBvA
         elif eAvA is eBvB:
-            v1, v2 = eAvB, eBvA
+            v1, v2 = eAvB, eBvB
         
         if eBvB is eCvA:
             v2, v3 = eBvA, eCvA
@@ -69,6 +87,6 @@ class Triangle:
         elif eBvA is eCvA:
             v2, v3 = eBvB, eCvA
         elif eBvA is eCvB:
-            v2, v3 = eBvB, eCvA
+            v2, v3 = eBvB, eCvB
 
         return v1, v2, v3
