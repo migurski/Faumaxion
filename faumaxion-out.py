@@ -3,26 +3,26 @@ import gnomonic, icosahedron, mesh
 import PIL.Image as Image
 from PIL.ImageDraw import ImageDraw
 
-# seen = []
-# remain = [(random.choice(icosahedron.faces.values()), [])]
-# 
-# while len(remain):
-#     face, chain = remain.pop(0)
-#     
-#     if face in seen:
-#         continue
-#     else:
-#         seen.append(face)
-# 
-#     print 'Face', id(face), 'seen', len(seen), 'chain', map(id, chain)
-#     
-#     for vertex in face.vertices():
-#         print vertex, face.project_vertex(vertex)
-#     
-#     chain = chain[:] + [face]
-#     
-#     for neighbor in face.neighbors():
-#         remain.append((neighbor, chain))
+print 'Laying out faces...'
+seen = []
+remain = [(icosahedron.faces[9], [])]
+
+while len(remain):
+    # do a breadth-first traversal of all faces, adjoining them into a single map
+    face, chain = remain.pop(0)
+    
+    if face in seen:
+        continue
+    else:
+        seen.append(face)
+
+    if len(chain):
+        chain[-1].adjoin(face)
+    
+    chain = chain[:] + [face]
+    
+    for neighbor in face.neighbors():
+        remain.append((neighbor, chain))
 
 points = []
 img = Image.new('RGB', (600, 600), 0x00)
@@ -36,8 +36,8 @@ print 'Loading colors...'
 colors = cPickle.load(gzip.open('world.topo.bathy-colors.pickle.gz'))
 
 print 'Projecting points...'
-for lat in range(-90, 90, 2):
-    for lon in range(-180, 180, 2):
+for lat in range(-90, 90, 1):
+    for lon in range(-180, 180, 1):
         try:
             r, g, b = colors[lat, lon]
         except KeyError:

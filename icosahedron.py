@@ -1,6 +1,6 @@
 """
 """
-import math, mesh, gnomonic
+import math, mesh, gnomonic, transform
 
 class Face(mesh.Triangle):
     """ A Triangle with some methods specific to this icosahedron.
@@ -8,9 +8,8 @@ class Face(mesh.Triangle):
     def __init__(self, edgeA, edgeB, edgeC):
         mesh.Triangle.__init__(self, edgeA, edgeB, edgeC)
         
-        # defaults, to flip right-side up and scale edge length to one
-        self.ax, self.bx, self.cx = 1/average_edge_length, 0, 0
-        self.ay, self.by, self.cy = 0, -1/average_edge_length, 0
+        self.transform = transform.Transformation(1/average_edge_length, 0, 0,
+                                                  0, -1/average_edge_length, 0)
         
     def center_latlon(self):
         """ Return lat, lon of center in degrees.
@@ -35,8 +34,29 @@ class Face(mesh.Triangle):
         
         x, y = gnomonic.project(*map(gnomonic.deg2rad, (lat, lon, lat0, lon0)))
         
-        return (self.ax * x + self.bx * y + self.cx), \
-               (self.ay * x + self.by * y + self.cy)
+        return self.transform.apply(x, y)
+        
+    def adjoin(self, other):
+        """ Adjoins another face to this one, if they share an edge.
+        
+            Works by modifying the transform property of the other edge.
+        """
+        for selfEdge in self.edges():
+            for otherEdge in other.edges():
+                if selfEdge.matches(otherEdge):
+                    a1x, a1y = other.project_vertex(selfEdge.vertexA)
+                    b1x, b1y = other.project_vertex(selfEdge.vertexB)
+                    c1x, c1y = derive_third_point(a1x, a1y, b1x, b1y)
+                    
+                    a2x, a2y = self.project_vertex(selfEdge.vertexA)
+                    b2x, b2y = self.project_vertex(selfEdge.vertexB)
+                    c2x, c2y = derive_third_point(a2x, a2y, b2x, b2y)
+                    
+                    t = transform.deriveTransformation(a1x, a1y, a2x, a2y, b1x, b1y, b2x, b2y, c1x, c1y, c2x, c2y)
+                    other.transform = other.transform.multiply(t)
+                    return
+
+        raise Exception("Sorry, those two faces don't seem to touch")
 
 def deg2rad(degrees):
     return degrees * math.pi / 180.0
@@ -132,6 +152,39 @@ def vertex2face(vertex):
     if v3_distance <= v2_distance and v2_distance <= v1_distance: lcd = 4
 
     return face, lcd
+
+def derive_third_point(p1x, p1y, p2x, p2y):
+    """ Return a third (x, y) point for two given points.
+    
+        Given two points, return a third point that forms an equilateral
+        right triangle, if the line between the two given points is the
+        hypotenuse. There's no particular reason this triangle has to be
+        right or equilateral - it just needs to be predictable,
+        congruent, and easy to eyeball for correctness.
+        
+        See http://mike.teczno.com/notes/two-fingers.html
+    """
+    # a vector from a to b
+    p3x, p3y = p2x - p1x, p2y - p1y
+    theta = math.atan2(p3y, p3x)
+    
+    # two more unit-length vectors, one for each leg of the equilateral right triangle
+    leg1x, leg1y = math.cos(theta + math.pi/4), math.sin(theta + math.pi/4)
+    leg2x, leg2y = math.cos(theta + 3*math.pi/4), math.sin(theta + 3*math.pi/4)
+    
+    # slope and intercept for each line
+    # intercept derived from http://mathworld.wolfram.com/Line.html (2)
+    slope1 = leg1y / leg1x
+    intercept1 = p1y - slope1 * p1x
+
+    slope2 = leg2y / leg2x
+    intercept2 = p2y - slope2 * p2x
+    
+    # solve for x and y of the third point
+    p3x = (intercept2 - intercept1) / (slope1 - slope2)
+    p3y = slope1 * p3x + intercept1
+    
+    return p3x, p3y
 
 # Refers to the projected, two-dimensional length
 average_edge_length = 1.323169076499213670

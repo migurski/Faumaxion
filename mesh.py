@@ -26,6 +26,21 @@ class Edge:
     def triangles(self):
         return (self.triangleA, self.triangleB)
 
+    def matches(self, other):
+        """ Returns true if this edge and the other share the same two vertices.
+        """
+        if self.vertexA is other.vertexA and self.vertexB is other.vertexB:
+            # same edge
+            return True
+
+        elif self.vertexA is other.vertexB and self.vertexB is other.vertexA:
+            # same vertices, but reversed
+            return True
+            
+        else:
+            # not the same vertices at all
+            return False
+
 class Triangle:
     def __init__(self, edgeA, edgeB, edgeC):
         self.edgeA = edgeA
