@@ -1,15 +1,17 @@
-import sys, gzip, re, random, math, cPickle
+import sys, gzip, re, random, math, cPickle, operator
 import gnomonic, icosahedron, mesh
 import PIL.Image as Image
 from PIL.ImageDraw import ImageDraw
 
 print 'Laying out faces...'
 seen = []
-remain = [(icosahedron.faces[9], [])]
+remain = [(None, icosahedron.faces[10], [])]
 
 while len(remain):
     # do a breadth-first traversal of all faces, adjoining them into a single map
-    face, chain = remain.pop(0)
+
+    remain.sort()
+    kind, face, chain = remain.pop(0)
     
     if face in seen:
         continue
@@ -21,8 +23,10 @@ while len(remain):
     
     chain = chain[:] + [face]
     
-    for neighbor in face.neighbors():
-        remain.append((neighbor, chain))
+    for edge in face.edges():
+        for neighbor in edge.triangles():
+            if neighbor is not face:
+                remain.append((2*edge.kind + len(chain), neighbor, chain))
 
 points = []
 img = Image.new('RGB', (600, 600), 0x00)

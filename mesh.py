@@ -16,12 +16,12 @@ class Vertex:
         return math.sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z)
 
 class Edge:
-    def __init__(self, vertexA, vertexB, triangleA, triangleB, strength):
+    def __init__(self, vertexA, vertexB, triangleA, triangleB, kind):
         self.vertexA = vertexA
         self.vertexB = vertexB
         self.triangleA = triangleA
         self.triangleB = triangleB
-        self.strength = strength
+        self.kind = kind
 
     def triangles(self):
         return (self.triangleA, self.triangleB)
