@@ -64,6 +64,16 @@ class Triangle:
     def edges(self):
         return (self.edgeA, self.edgeB, self.edgeC)
     
+    def shared(self, other):
+        """ Return shared edge.
+        """
+        for selfEdge in self.edges():
+            for otherEdge in other.edges():
+                if selfEdge.matches(otherEdge):
+                    return selfEdge
+
+        raise Exception("Sorry, those two faces don't seem to touch")
+    
     def neighbors(self):
         """ Return neighboring triangles, in order.
         """

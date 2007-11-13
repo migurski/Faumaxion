@@ -41,22 +41,20 @@ class Face(mesh.Triangle):
         
             Works by modifying the transform property of the other edge.
         """
-        for selfEdge in self.edges():
-            for otherEdge in other.edges():
-                if selfEdge.matches(otherEdge):
-                    a1x, a1y = other.project_vertex(selfEdge.vertexA)
-                    b1x, b1y = other.project_vertex(selfEdge.vertexB)
-                    c1x, c1y = derive_third_point(a1x, a1y, b1x, b1y)
-                    
-                    a2x, a2y = self.project_vertex(selfEdge.vertexA)
-                    b2x, b2y = self.project_vertex(selfEdge.vertexB)
-                    c2x, c2y = derive_third_point(a2x, a2y, b2x, b2y)
-                    
-                    t = transform.deriveTransformation(a1x, a1y, a2x, a2y, b1x, b1y, b2x, b2y, c1x, c1y, c2x, c2y)
-                    other.transform = other.transform.multiply(t)
-                    return
+        edge = self.shared(other)
 
-        raise Exception("Sorry, those two faces don't seem to touch")
+        # 2D positions of vertices in other projection
+        a1x, a1y = other.project_vertex(edge.vertexA)
+        b1x, b1y = other.project_vertex(edge.vertexB)
+        c1x, c1y = derive_third_point(a1x, a1y, b1x, b1y)
+        
+        # 2D positions of vertices in this projection
+        a2x, a2y = self.project_vertex(edge.vertexA)
+        b2x, b2y = self.project_vertex(edge.vertexB)
+        c2x, c2y = derive_third_point(a2x, a2y, b2x, b2y)
+        
+        t = transform.deriveTransformation(a1x, a1y, a2x, a2y, b1x, b1y, b2x, b2y, c1x, c1y, c2x, c2y)
+        other.transform = other.transform.multiply(t)
 
 def deg2rad(degrees):
     return degrees * math.pi / 180.0
@@ -204,7 +202,7 @@ vertices = { 1: mesh.Vertex( 0.420152426708710003,  0.078145249402782959,  0.904
             12: mesh.Vertex(-0.420152426708710003, -0.078145249402782959, -0.904082550615019298)}
 
 # Edges and Faces
-edges = []
+edges = {}
 faces = {}
 
 LAND = 1
@@ -238,25 +236,26 @@ for t, v1, v2 in [(1, 1, 3), (1, 3, 2), (1, 2, 1), (2, 1, 4), (2, 4, 3), (2, 3, 
     else:
         face = faces[t] = Face(None, None, None)
 
+    edge_key = (min(v1, v2), max(v1, v2))
+    
     # this edge has two vertices
     vertexA = vertices[v1]
     vertexB = vertices[v2]
     
     # see if the edge already exists in the opposite direction
-    edge = False
-    for e in edges:
-        if e.vertexB is vertexA and e.vertexA is vertexB:
-            edge = e
-            break
+    try:
+        edge = edges[edge_key]
+    except KeyError:
+        edge = False
     
     if edge:
         # edge exists, so assign it the appropriate face
         edge.triangleB = face
     else:
         # new edge, just one face for now
-        kind = edge_kinds[min(v1, v2), max(v1, v2)]
+        kind = edge_kinds[edge_key]
         edge = mesh.Edge(vertexA, vertexB, face, None, kind)
-        edges.append(edge)
+        edges[edge_key] = edge
 
     if face.edgeA is None:
         face.edgeA = edge
