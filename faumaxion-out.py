@@ -4,8 +4,11 @@ import PIL.Image as Image
 from PIL.ImageDraw import ImageDraw
 
 print 'Laying out faces...'
+lat, lon = map(float, sys.argv[-2:])
+face = icosahedron.vertex2face(icosahedron.latlon2vertex(lat, lon))
+
 seen = []
-remain = [(None, icosahedron.faces[10], [])]
+remain = [(None, face, [])]
 
 while len(remain):
     # do a breadth-first traversal of all faces, adjoining them into a single map
@@ -23,10 +26,9 @@ while len(remain):
     
     chain = chain[:] + [face]
     
-    for edge in face.edges():
-        for neighbor in edge.triangles():
-            if neighbor is not face:
-                remain.append((2*edge.kind + len(chain), neighbor, chain))
+    for neighbor in face.neighbors():
+        edge = face.shared(neighbor)
+        remain.append((2*edge.kind + len(chain), neighbor, chain))
 
 points = []
 img = Image.new('RGB', (600, 600), 0x00)
@@ -40,35 +42,16 @@ print 'Loading colors...'
 colors = cPickle.load(gzip.open('world.topo.bathy-colors.pickle.gz'))
 
 print 'Projecting points...'
-for lat in range(-90, 90, 1):
-    for lon in range(-180, 180, 1):
+for lat in range(-90, 90, 3):
+    for lon in range(-180, 180, 3):
         try:
             r, g, b = colors[lat, lon]
         except KeyError:
             continue
 
-        # Convert the given (long.,lat.) coordinate into spherical
-        # polar coordinates (r, theta, phi) with radius=1.
-        # Angles are given in radians, NOT degrees.
-        theta, phi = icosahedron.latlon2spherical(lat, lon)
-        
-        # convert the spherical polar coordinates into cartesian
-        # (x, y, z) coordinates.
-        vertex = icosahedron.spherical2vertex(theta, phi)
-        
-        # determine which of the 20 spherical icosahedron faces
-        # the given point is in and the LCD face.
-        face = icosahedron.vertex2face(vertex)
-        
+        face = icosahedron.vertex2face(icosahedron.latlon2vertex(lat, lon))
         x, y = face.project_latlon(lat, lon)
         
-        #for f, other in icosahedron.faces.items():
-        #    if other is face:
-        #        f -= 1
-        #        
-        #        x += (f % 7)
-        #        y += math.floor(f / 7.0)
-
         points.append((x, y, lat, lon, (r, g, b)))
 
 min_x = min([x for (x, y, lat, lon, color) in points])

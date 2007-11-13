@@ -14,14 +14,12 @@ class Face(mesh.Triangle):
     def center_latlon(self):
         """ Return lat, lon of center in degrees.
         """
-        theta, phi = vertex2spherical(self.center())
-        return spherical2latlon(theta, phi)
+        return vertex2latlon(self.center())
 
     def project_vertex(self, vertex):
         """ Return x, y position of projected vertex on this face.
         """
-        theta, phi = vertex2spherical(vertex)
-        lat, lon = spherical2latlon(theta, phi)
+        lat, lon = vertex2latlon(vertex)
         
         return self.project_latlon(lat, lon)
 
@@ -62,38 +60,27 @@ def deg2rad(degrees):
 def rad2deg(radians):
     return radians * 180.0 / math.pi
 
-def latlon2spherical(lat, lon):
-    """ Convert (lat, lon) point to spherical polar coordinates.
+def latlon2vertex(lat, lon):
+    """ Convert (lat, lon) point to vertex.
         
-        (lat, lon) is given in degrees, (theta, phi) is returned in radians
+        (lat, lon) is given in degrees.
     """
     if lon < 0:
         lon += 360.0
 
-    return deg2rad(90.0 - lat), deg2rad(lon)
+    theta, phi = deg2rad(90.0 - lat), deg2rad(lon)
 
-def spherical2latlon(theta, phi):
-    """ Convert spherical polar coordinates to (lat, lon) point.
-        
-        (theta, phi) is given in radians, (lat, lon) is returned in degrees.
-    """
-    return 90.0 - rad2deg(theta), rad2deg(phi)
-
-def spherical2vertex(theta, phi):
-    """ Convert spherical polar coordinates to vertex.
-    
-        (theta, phi) is given in radians.
-    """
     x = math.sin(theta) * math.cos(phi)
     y = math.sin(theta) * math.sin(phi)
     z = math.cos(theta)
     
-    return mesh.Vertex(x, y, z)
+    vertex = mesh.Vertex(x, y, z)
+    return vertex
 
-def vertex2spherical(vertex):
-    """ Convert vertex to spherical polar coordinates.
+def vertex2latlon(vertex):
+    """ Convert vertex to (lat, lon) point.
         
-        (theta, phi) is returned in radians.
+        (lat, lon) is returned in degrees.
     """
     if vertex.x > 0.0 and vertex.y > 0.0:
         a = deg2rad(0.0)
@@ -123,8 +110,8 @@ def vertex2spherical(vertex):
         phi = math.atan(vertex.y / vertex.x) + a
 
     theta = math.acos(vertex.z)
-    
-    return theta, phi
+    lat, lon = 90.0 - rad2deg(theta), rad2deg(phi)
+    return lat, lon
 
 def vertex2face(vertex):
     """ Determine which face the point is in.
