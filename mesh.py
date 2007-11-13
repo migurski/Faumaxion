@@ -46,10 +46,11 @@ class Triangle:
         self.edgeA = edgeA
         self.edgeB = edgeB
         self.edgeC = edgeC
-        self._center = False
+        self.center = None
+        self.calculate_center()
 
-    def center(self):
-        if not self._center:
+    def calculate_center(self):
+        try:
             v1, v2, v3 = self.vertices()
             
             avg_x = (v1.x + v2.x + v3.x) / 3.0
@@ -57,9 +58,10 @@ class Triangle:
             avg_z = (v1.z + v2.z + v3.z) / 3.0
     
             length = math.sqrt(avg_x*avg_x + avg_y*avg_y + avg_z*avg_z)
-            self._center = Vertex(avg_x/length, avg_y/length, avg_z/length)
+            self.center = Vertex(avg_x/length, avg_y/length, avg_z/length)
 
-        return self._center
+        except AttributeError:
+            self.center = None
             
     def edges(self):
         return (self.edgeA, self.edgeB, self.edgeC)

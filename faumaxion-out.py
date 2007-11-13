@@ -8,7 +8,7 @@ lat, lon = map(float, sys.argv[-2:])
 face = icosahedron.vertex2face(icosahedron.latlon2vertex(lat, lon))
 
 face.orient_north(lat, lon)
-face.arrange_neighbors()
+faces = face.arrange_neighbors()
 
 points = []
 img = Image.new('RGB', (600, 600), 0x00)
@@ -35,8 +35,6 @@ min_y = min([y for (x, y, lat, lon, color) in points])
 max_x = max([x for (x, y, lat, lon, color) in points])
 max_y = max([y for (x, y, lat, lon, color) in points])
 
-print (min_x, min_y), (max_x, max_y)
-
 top, left, bottom, right = 10, 10, img.size[1] - 10, img.size[0] - 10
 
 mx = (right - left) / (max_x - min_x)
@@ -51,5 +49,19 @@ print 'Drawing points...'
 for (x, y, lat, lon, color) in points:
     x, y = mx * x + bx, my * y + by
     draw.rectangle((x-3, y-3, x, y), fill=color)
+
+print 'Drawing lines...'
+for face in faces:
+    for edge in face.edges():
+        x, y = face.project_vertex(edge.vertexA)
+        x1, y1 = mx * x + bx, my * y + by
+        
+        x, y = face.project_vertex(edge.vertexB)
+        x2, y2 = mx * x + bx, my * y + by
+        
+        if edge.kind == icosahedron.LAND:
+            draw.line((x1, y1, x2, y2), fill=(0x00, 0xCC, 0x00))
+        elif edge.kind == icosahedron.WATER:
+            draw.line((x1, y1, x2, y2), fill=(0x00, 0x66, 0xFF))
 
 img.save('out.png')

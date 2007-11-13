@@ -18,7 +18,7 @@ class Face(mesh.Triangle):
     def center_latlon(self):
         """ Return lat, lon of center in degrees.
         """
-        return vertex2latlon(self.center())
+        return vertex2latlon(self.center)
 
     def project_vertex(self, vertex):
         """ Return x, y position of projected vertex on this face.
@@ -60,6 +60,8 @@ class Face(mesh.Triangle):
 
     def arrange_neighbors(self, preferred_kind=LAND):
         """ Adjoin all neighbors to this face into a single map.
+        
+            Returns a list of arranged faces.
         """
         seen = []
         remain = [(None, self, [])]
@@ -89,6 +91,8 @@ class Face(mesh.Triangle):
             for neighbor in face.neighbors():
                 edge = face.shared(neighbor)
                 remain.append((kind_weights[edge.kind] + len(chain), neighbor, chain))
+
+        return seen
 
     def orient_north(self, lat, lon):
         """ Transform this face so that (lat, lon) is locally north = up.
@@ -167,7 +171,7 @@ def vertex2face(vertex):
     
         Return Face object.
     """
-    distances = [(vertex.distance(face.center()), face) for face in faces.values()]
+    distances = [(vertex.distance(face.center), face) for face in faces.values()]
     distances.sort()
     
     face = distances[0][1]
@@ -291,15 +295,48 @@ for t, v1, v2 in [(1, 1, 3), (1, 3, 2), (1, 2, 1), (2, 1, 4), (2, 4, 3), (2, 3, 
         edges[edge_key] = edge
 
     if face.edgeA is None:
-        face.edgeA = edge
+        face.__init__(edge, None, None)
     
     elif face.edgeB is None:
-        face.edgeB = edge
+        face.__init__(face.edgeA, edge, None)
     
     elif face.edgeC is None:
-        face.edgeC = edge
+        face.__init__(face.edgeA, face.edgeB, edge)
 
 del edge_kinds
+
+# # split face 16 into two, along with face 17
+# vertices[9, 12] = mesh.Vertex(.5 * (vertices[9].x + vertices[12].x),
+#                               .5 * (vertices[9].y + vertices[12].y),
+#                               .5 * (vertices[9].z + vertices[12].z))
+# 
+# edges[8, (9, 12)] = mesh.Edge(vertices[8], vertices[9, 12], None, None, WATER)
+# edges[9, (9, 12)] = mesh.Edge(vertices[9], vertices[9, 12], None, None, LAND)
+# edges[(9, 12), 10] = mesh.Edge(vertices[9, 12], vertices[10], None, None, LAND)
+# edges[(9, 12), 12] = mesh.Edge(vertices[9, 12], vertices[12], None, None, WATER)
+# 
+# faces[16, 1] = Face(edges[8, 9], edges[8, (9, 12)], edges[9, (9, 12)])
+# faces[16, 1].center = faces[16].center
+# edges[8, 9].triangleA, edges[8, 9].triangleB = faces[16, 1], faces[7]
+# 
+# faces[16, 2] = Face(edges[8, (9, 12)], edges[8, 12], edges[(9, 12), 12])
+# faces[16, 2].center = faces[16].center
+# edges[8, 12].triangleA, edges[8, 12].triangleB = faces[16, 2], faces[20]
+# 
+# faces[17, 1] = Face(edges[9, 10], edges[9, (9, 12)], edges[(9, 12), 10])
+# faces[17, 1].center = faces[17].center
+# edges[9, 10].triangleA, edges[9, 10].triangleB = faces[17, 1], faces[9]
+# 
+# faces[17, 2] = Face(edges[(9, 12), 12], edges[(9, 12), 10], edges[10, 12])
+# faces[17, 2].center = faces[17].center
+# edges[10, 12].triangleA, edges[10, 12].triangleB = faces[17, 2], faces[18]
+# 
+# edges[8, (9, 12)].triangleA, edges[8, (9, 12)].triangleB = faces[16, 1], faces[16, 2]
+# edges[9, (9, 12)].triangleA, edges[9, (9, 12)].triangleB = faces[16, 1], faces[17, 1]
+# edges[(9, 12), 10].triangleA, edges[(9, 12), 10].triangleB = faces[17, 1], faces[17, 2]
+# edges[(9, 12), 12].triangleA, edges[(9, 12), 12].triangleB = faces[16, 2], faces[17, 2]
+# 
+# del edges[9, 12], faces[16], faces[17]
 
 
 
