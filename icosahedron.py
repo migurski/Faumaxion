@@ -2,6 +2,10 @@
 """
 import math, mesh, gnomonic, transform
 
+# constants used to arrange faces
+LAND = 'contiguous land masses'
+WATER = 'contiguous bodies of water'
+
 class Face(mesh.Triangle):
     """ A Triangle with some methods specific to this icosahedron.
     """
@@ -53,6 +57,38 @@ class Face(mesh.Triangle):
         
         t = transform.deriveTransformation(a1x, a1y, a2x, a2y, b1x, b1y, b2x, b2y, c1x, c1y, c2x, c2y)
         other.transform = other.transform.multiply(t)
+
+    def arrange_neighbors(self, preferred_kind=LAND):
+        """ Adjoin all neighbors to this face into a single map.
+        """
+        seen = []
+        remain = [(None, self, [])]
+        
+        if preferred_kind == LAND:
+            kind_weights = {LAND: 0, WATER: 2}
+        elif preferred_kind == WATER:
+            kind_weights = {WATER: 0, LAND: 2}
+        else:
+            raise Exception("I don't know the kind '%s'" % preferred_kind)
+        
+        while len(remain):
+            # do a breadth-first traversal of all neighboring faces
+            remain.sort()
+            kind, face, chain = remain.pop(0)
+            
+            if face in seen:
+                continue
+            else:
+                seen.append(face)
+        
+            if len(chain):
+                chain[-1].adjoin(face)
+            
+            chain = chain[:] + [face]
+            
+            for neighbor in face.neighbors():
+                edge = face.shared(neighbor)
+                remain.append((kind_weights[edge.kind] + len(chain), neighbor, chain))
 
     def orient_north(self, lat, lon):
         """ Transform this face so that (lat, lon) is locally north = up.
@@ -204,9 +240,6 @@ vertices = { 1: mesh.Vertex( 0.420152426708710003,  0.078145249402782959,  0.904
 # Edges and Faces
 edges = {}
 faces = {}
-
-LAND = 1
-WATER = 2
 
 edge_kinds = {(1, 2): LAND, (2, 3): LAND, (1, 3): LAND,
               (1, 4): LAND, (3, 4): LAND,

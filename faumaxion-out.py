@@ -8,37 +8,11 @@ lat, lon = map(float, sys.argv[-2:])
 face = icosahedron.vertex2face(icosahedron.latlon2vertex(lat, lon))
 
 face.orient_north(lat, lon)
-
-seen = []
-remain = [(None, face, [])]
-
-while len(remain):
-    # do a breadth-first traversal of all faces, adjoining them into a single map
-
-    remain.sort()
-    kind, face, chain = remain.pop(0)
-    
-    if face in seen:
-        continue
-    else:
-        seen.append(face)
-
-    if len(chain):
-        chain[-1].adjoin(face)
-    
-    chain = chain[:] + [face]
-    
-    for neighbor in face.neighbors():
-        edge = face.shared(neighbor)
-        remain.append((2*edge.kind + len(chain), neighbor, chain))
+face.arrange_neighbors()
 
 points = []
 img = Image.new('RGB', (600, 600), 0x00)
 draw = ImageDraw(img)
-
-re_intersections = re.compile(r'^(-?\d*[05]), (-?\d*[05]): #\w{6} \((\d+), (\d+), (\d+)\)')
-re_intersections = re.compile(r'^(-?\d*[02468]), (-?\d*[02468]): #\w{6} \((\d+), (\d+), (\d+)\)')
-re_intersections = re.compile(r'^(-?\d*[\d]), (-?\d*[\d]): #\w{6} \((\d+), (\d+), (\d+)\)')
 
 print 'Loading colors...'
 colors = cPickle.load(gzip.open('world.topo.bathy-colors.pickle.gz'))
