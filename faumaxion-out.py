@@ -1,11 +1,13 @@
 import sys, gzip, re, random, math, cPickle, operator
-import gnomonic, icosahedron, mesh
+import gnomonic, icosahedron, mesh, transform
 import PIL.Image as Image
 from PIL.ImageDraw import ImageDraw
 
 print 'Laying out faces...'
 lat, lon = map(float, sys.argv[-2:])
 face = icosahedron.vertex2face(icosahedron.latlon2vertex(lat, lon))
+
+face.orient_north(lat, lon)
 
 seen = []
 remain = [(None, face, [])]

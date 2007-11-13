@@ -54,6 +54,19 @@ class Face(mesh.Triangle):
         t = transform.deriveTransformation(a1x, a1y, a2x, a2y, b1x, b1y, b2x, b2y, c1x, c1y, c2x, c2y)
         other.transform = other.transform.multiply(t)
 
+    def orient_north(self, lat, lon):
+        """ Transform this face so that (lat, lon) is locally north = up.
+        """
+        x1, y1 = self.project_latlon(lat, lon)
+        x2, y2 = self.project_latlon(lat+1, lon)
+
+        # -90 deg is the desired rotation
+        theta = math.atan2(y2 - y1, x2 - x1)
+        diff = deg2rad(-90) - theta
+        
+        t = transform.Transformation(math.cos(diff), -math.sin(diff), 0, math.sin(diff), math.cos(diff), 0)
+        self.transform = self.transform.multiply(t)
+
 def deg2rad(degrees):
     return degrees * math.pi / 180.0
 
