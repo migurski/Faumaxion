@@ -35,8 +35,21 @@ class Face(mesh.Triangle):
         lat0, lon0 = self.center_latlon()
         
         x, y = gnomonic.project(*map(gnomonic.deg2rad, (lat, lon, lat0, lon0)))
+        x, y = self.transform.apply(x, y)
         
-        return self.transform.apply(x, y)
+        return x, y
+
+    def unproject_point(self, x, y):
+        """ Return lat, lon of x, y position on this face.
+        
+            Lat, lon returned in degrees.
+        """
+        x, y = self.transform.unapply(x, y)
+
+        lat0, lon0 = self.center_latlon()
+        lat, lon = map(gnomonic.rad2deg, gnomonic.unproject(x, y, *map(gnomonic.deg2rad, (lat0, lon0))))
+        
+        return lat, lon
         
     def adjoin(self, other):
         """ Adjoins another face to this one, if they share an edge.
