@@ -1,7 +1,9 @@
-import sys, gzip, re, random, math, cPickle, operator
+import sys, re, math, urllib, StringIO
 import gnomonic, icosahedron, mesh, transform
 import PIL.Image as Image
 from PIL.ImageDraw import ImageDraw
+
+img = Image.new('RGB', (900, 600), 0x00)
 
 print 'Laying out faces...'
 lat, lon = map(float, sys.argv[1:3])
@@ -11,17 +13,20 @@ face.orient_north(lat, lon)
 face.center_on(lat, lon)
 
 face.scale(int(sys.argv[3]))
-face.translate(300, 300)
+face.translate(img.size[0]/2, img.size[1]/2)
 
-faces = face.arrange_neighbors()
-
-points = []
-img = Image.new('RGB', (600, 600), 0x00)
+faces = face.arrange_neighbors(icosahedron.LAND)
 
 UP = 'triangle points up'
 DOWN = 'triangle points down'
 
-def apply_face(img, srcName, face, point, corners=None):
+def srcImage(srcPath):
+    url = 'http://faumaxion.modestmaps.com/' + '/'.join(srcPath) + '.png'
+    return Image.open(StringIO.StringIO(urllib.urlopen(url).read()))
+
+    return Image.open('out/tiles/' + '/'.join(srcPath) + '.png')
+
+def apply_face(img, srcPath, face, point, corners=None):
     """ Corners is a list of three (x, y) pairs
     """
     if corners is None:
@@ -37,10 +42,10 @@ def apply_face(img, srcName, face, point, corners=None):
         # face is not visible, so don't bother
         return
 
-    src = Image.open(srcName)
+    src = srcImage(srcPath)
     magnify = math.hypot(f2x - f3x, f2y - f3y) / src.size[0]
     
-    if magnify > 1.35:
+    if magnify > 1.4:
         try:
             # split each side in half
             f12x, f12y = .5 * (f1x + f2x), .5 * (f1y + f2y)
@@ -54,23 +59,26 @@ def apply_face(img, srcName, face, point, corners=None):
     
             for p, corners in subcorners:
                 if p == 'k':
-                    apply_face(img, '%s/%s%s' % (srcName[:-4], p, srcName[-4:]), face, {UP:DOWN, DOWN:UP}[point], corners)
+                    apply_face(img, srcPath + [p], face, {UP:DOWN, DOWN:UP}[point], corners)
                 else:
-                    apply_face(img, '%s/%s%s' % (srcName[:-4], p, srcName[-4:]), face, point, corners)
+                    apply_face(img, srcPath + [p], face, point, corners)
 
             return
                     
         except IOError:
-            # uh oh, go on to the current zoom level, below
+            # uh oh: most likely a nested source image failed
+            # to load, go on to the current zoom level, below.
             pass
 
-    print 'Rendering %s at %d%% magnification' % (srcName, magnify*100)
+    print 'Rendering %s at %d%% magnification' % ('/'.join(srcPath), magnify*100)
     
     # image coords
+    dim = src.size[0]
+    
     if point == UP:
-        (i1x, i1y), (i2x, i2y), (i3x, i3y) = (128, 256 - 256 * math.sin(math.pi/3)), (256, 256), (0, 256)
+        (i1x, i1y), (i2x, i2y), (i3x, i3y) = (dim/2, dim - dim * math.sin(math.pi/3)), (dim, dim), (0, dim)
     elif point == DOWN:
-        (i1x, i1y), (i2x, i2y), (i3x, i3y) = (128, 256 * math.sin(math.pi/3)), (0, 0), (256, 0)
+        (i1x, i1y), (i2x, i2y), (i3x, i3y) = (dim/2, dim * math.sin(math.pi/3)), (0, 0), (dim, 0)
     else:
         raise Exception('Unknown point')
     
@@ -82,7 +90,7 @@ def apply_face(img, srcName, face, point, corners=None):
 print 'Drawing faces...'
 for f, face in icosahedron.faces.items():
     if face in faces:
-        apply_face(img, 'out/tiles/%02d.png' % f, face, UP)
+        apply_face(img, ['%02d' % f], face, UP)
 
 print 'Drawing lines...'
 draw = ImageDraw(img)
