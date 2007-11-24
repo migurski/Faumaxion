@@ -115,9 +115,33 @@ class Face(mesh.Triangle):
 
         # -90 deg is the desired rotation
         theta = math.atan2(y2 - y1, x2 - x1)
-        diff = deg2rad(-90) - theta
+        angle = -90 - rad2deg(theta)
         
-        t = transform.Transformation(math.cos(diff), -math.sin(diff), 0, math.sin(diff), math.cos(diff), 0)
+        self.rotate(angle)
+
+    def center_on(self, lat, lon):
+        """ Transform this face so that (lat, lon) is projected to (x, y) center.
+        """
+        x, y = self.project_latlon(lat, lon)
+        self.translate(-x, -y)
+
+    def rotate(self, angle=0):
+        """ Rotate this face by some angle, given in degrees.
+        """
+        theta = deg2rad(angle)
+        t = transform.Transformation(math.cos(theta), -math.sin(theta), 0, math.sin(theta), math.cos(theta), 0)
+        self.transform = self.transform.multiply(t)
+    
+    def translate(self, xdistance=0, ydistance=0):
+        """ Move this face by some distance.
+        """
+        t = transform.Transformation(1, 0, xdistance, 0, 1, ydistance)
+        self.transform = self.transform.multiply(t)
+
+    def scale(self, factor=1):
+        """ Scale this face by a factor.
+        """
+        t = transform.Transformation(factor, 0, 0, 0, factor, 0)
         self.transform = self.transform.multiply(t)
 
 def deg2rad(degrees):
