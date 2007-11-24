@@ -49,6 +49,12 @@ class Transformation:
         self.by = float(by)
         self.cy = float(cy)
 
+    def data(self):
+        return (self.ax, self.bx, self.cx, self.ay, self.by, self.cy)
+        
+    def clone(self):
+        return Transformation(*self.data())
+    
     def apply(self, x, y):
         return (self.ax * x + self.bx * y + self.cx), \
                (self.ay * x + self.by * y + self.cy)

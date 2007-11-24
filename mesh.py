@@ -8,12 +8,20 @@ class Vertex:
 
     def __str__(self):
         return 'Vertex(%(x).3f, %(y).3f, %(z).3f)' % self.__dict__
+        
+    def clone(self):
+        return Vertex(self.x, self.y, self.z)
 
     def distance(self, other):
         """ Return distance from this vertex to another.
         """
         diff = Vertex(other.x - self.x, other.y - self.y, other.z - self.z)
         return math.sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z)
+
+    def midpoint(self, other):
+        """ Return a new vertex betweem this and another.
+        """
+        return Vertex(.5 * (self.x + other.x), .5 * (self.y + other.y), .5 * (self.z + other.z))
 
 class Edge:
     def __init__(self, vertexA, vertexB, triangleA, triangleB, kind):
@@ -25,7 +33,7 @@ class Edge:
 
     def triangles(self):
         return (self.triangleA, self.triangleB)
-
+        
     def matches(self, other):
         """ Returns true if this edge and the other share the same two vertices.
         """
