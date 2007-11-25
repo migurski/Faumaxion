@@ -19,9 +19,14 @@ faces = face.arrange_neighbors(icosahedron.LAND)
 
 UP = 'triangle points up'
 DOWN = 'triangle points down'
+DIM = 256 # known native size of a triangular tile
 
 def srcImage(srcPath):
+    """ Return a tile image for a source path list.
+    """
     url = 'http://faumaxion.modestmaps.com/' + '/'.join(srcPath) + '.png'
+    
+    print 'Downloading', url, '...'
     return Image.open(StringIO.StringIO(urllib.urlopen(url).read()))
 
     return Image.open('out/tiles/' + '/'.join(srcPath) + '.png')
@@ -42,8 +47,7 @@ def apply_face(img, srcPath, face, point, corners=None):
         # face is not visible, so don't bother
         return
 
-    src = srcImage(srcPath)
-    magnify = math.hypot(f2x - f3x, f2y - f3y) / src.size[0]
+    magnify = math.hypot(f2x - f3x, f2y - f3y) / DIM
     
     if magnify > 1.4:
         try:
@@ -72,18 +76,16 @@ def apply_face(img, srcPath, face, point, corners=None):
 
     print 'Rendering %s at %d%% magnification' % ('/'.join(srcPath), magnify*100)
     
-    # image coords
-    dim = src.size[0]
-    
     if point == UP:
-        (i1x, i1y), (i2x, i2y), (i3x, i3y) = (dim/2, dim - dim * math.sin(math.pi/3)), (dim, dim), (0, dim)
+        (i1x, i1y), (i2x, i2y), (i3x, i3y) = (DIM/2, DIM - DIM * math.sin(math.pi/3)), (DIM, DIM), (0, DIM)
     elif point == DOWN:
-        (i1x, i1y), (i2x, i2y), (i3x, i3y) = (dim/2, dim * math.sin(math.pi/3)), (0, 0), (dim, 0)
+        (i1x, i1y), (i2x, i2y), (i3x, i3y) = (DIM/2, DIM * math.sin(math.pi/3)), (0, 0), (DIM, 0)
     else:
         raise Exception('Unknown point')
     
+    # transform the source tile into place
     t = transform.deriveTransformation(f1x, f1y, i1x, i1y, f2x, f2y, i2x, i2y, f3x, f3y, i3x, i3y)
-    src = src.transform(img.size, Image.AFFINE, t.data())
+    src = srcImage(srcPath).transform(img.size, Image.AFFINE, t.data())
     
     img.paste(src, (0, 0), src)
 
