@@ -67,8 +67,10 @@ def face_in_image(corners, img):
             
         return True
 
-def apply_face(img, srcPath, face, point, corners=None):
+def apply_face(img, srcPath, face, point, corners=None, paste=False):
     """ Paste a face onto an image.
+    
+        Return a list of pasted faces and affine transformations.
     
         Arguments:
             img is a PIL.Image instance.
@@ -76,12 +78,13 @@ def apply_face(img, srcPath, face, point, corners=None):
             face is an icosahedron.Face.
             point is UP or DOWN.
             corners is an optional list of three (x, y) pairs of projected triangle corners.
+            paste is a boolean flag for doing the actual pasting, or now
     """
     if corners is None:
         corners = map(face.project_vertex, face.vertices())
     
     if not face_in_image(corners, img):
-        return
+        return []
 
     # face coords
     (f1x, f1y), (f2x, f2y), (f3x, f3y) = corners
@@ -101,20 +104,22 @@ def apply_face(img, srcPath, face, point, corners=None):
                           ('j', ((f31x, f31y), (f23x, f23y), (f3x, f3y))),
                           ('k', ((f23x, f23y), (f31x, f31y), (f12x, f12y)))]
     
+            applied = []
+            
             for p, corners in subcorners:
                 if p == 'k':
-                    apply_face(img, srcPath + [p], face, {UP:DOWN, DOWN:UP}[point], corners)
+                    applied += apply_face(img, srcPath + [p], face, {UP:DOWN, DOWN:UP}[point], corners, paste)
                 else:
-                    apply_face(img, srcPath + [p], face, point, corners)
+                    applied += apply_face(img, srcPath + [p], face, point, corners, paste)
 
-            return
+            return applied
                     
         except IOError:
             # uh oh: most likely a nested source image failed
             # to load, go on to the current zoom level, below.
             pass
 
-    print 'Rendering %s at %d%% magnification' % ('/'.join(srcPath), magnify*100)
+    print 'Applying %s at %d%% magnification' % ('/'.join(srcPath), magnify*100)
     
     if point == UP:
         (i1x, i1y), (i2x, i2y), (i3x, i3y) = (DIM/2, DIM - DIM * math.sin(math.pi/3)), (DIM, DIM), (0, DIM)
@@ -125,9 +130,12 @@ def apply_face(img, srcPath, face, point, corners=None):
     
     # transform the source tile into place
     t = transform.deriveTransformation(f1x, f1y, i1x, i1y, f2x, f2y, i2x, i2y, f3x, f3y, i3x, i3y)
-    src = srcImage(srcPath).transform(img.size, Image.AFFINE, t.data())
+
+    if paste:
+        src = srcImage(srcPath).transform(img.size, Image.AFFINE, t.data())
+        img.paste(src, (0, 0), src)
     
-    img.paste(src, (0, 0), src)
+    return [(srcPath, t.data())]
 
 def parseWidthHeight(option, opt, values, parser):
     if values[0] > 0 and values[1] > 0:
@@ -160,7 +168,7 @@ parser = optparse.OptionParser(usage="""faumaxion-out.py [options]
 Example map centered on San Francisco and Oakland:
     python faumaxion-out.py -o out.png -c 37.8 -122.3 -s 200 -d 800 600
     
-All options are required.""")
+Output file, center, dimensions, and triangle side options are required.""")
 
 parser.add_option('-o', '--out', dest='outfile',
                   help='Write to output file')
@@ -176,6 +184,10 @@ parser.add_option('-d', '--dimensions', dest='dimensions', nargs=2,
 parser.add_option('-s', '--triangle-side', dest='side', nargs=1,
                   help='Pixel length of triangle side', type='int',
                   action='callback', callback=parseSide)
+
+parser.add_option('-j', '--join', dest='join',
+                  help='Which kind of edges to join: LAND or WATER, defaults to LAND',
+                  type='choice', choices=('LAND', 'WATER'), default='LAND')
 
 if __name__ == '__main__':
 
@@ -194,12 +206,23 @@ if __name__ == '__main__':
     face.scale(parser.side)
     face.translate(img.size[0]/2, img.size[1]/2)
     
-    faces = face.arrange_neighbors(icosahedron.LAND)
+    if options.join == 'WATER':
+        faces = face.arrange_neighbors(icosahedron.WATER)
+
+    elif options.join == 'LAND':
+        faces = face.arrange_neighbors(icosahedron.LAND)
     
     print 'Drawing faces...'
+    
+    applied = []
+    
     for f, face in icosahedron.faces.items():
         if face in faces:
-            apply_face(img, ['%02d' % f], face, UP)
+            applied += apply_face(img, ['%02d' % f], face, UP)
+            
+    for (srcPath, affineData) in applied:
+        src = srcImage(srcPath).transform(img.size, Image.AFFINE, affineData)
+        img.paste(src, (0, 0), src)
     
     print 'Drawing lines...'
     draw = ImageDraw(img)
@@ -210,8 +233,35 @@ if __name__ == '__main__':
             x2, y2 = face.project_vertex(edge.vertexB)
             
             if edge.kind == icosahedron.LAND:
-                draw.line((x1, y1, x2, y2), fill=(0x00, 0xCC, 0x00))
+                draw.line((x1, y1, x2, y2), fill=(0x00, 0xCC, 0x00, 0x80))
             elif edge.kind == icosahedron.WATER:
-                draw.line((x1, y1, x2, y2), fill=(0x00, 0x66, 0xFF))
+                draw.line((x1, y1, x2, y2), fill=(0x00, 0x66, 0xFF, 0x80))
+    
+    # # meridians
+    # for lat in range(-90, 90, 15):
+    #     for lon in range(-180, 180, 1):
+    #         vertex = icosahedron.latlon2vertex(lat, lon)
+    #         face = icosahedron.vertex2face(vertex)
+    #         if face in faces:
+    #             x, y = face.project_vertex(vertex)
+    #             draw.rectangle((x, y, x, y), fill=(0x99, 0x99, 0x99))
+    # 
+    # # parallels
+    # for lon in range(-180, 180, 15):
+    #     for lat in range(-90, 90, 1):
+    #         vertex = icosahedron.latlon2vertex(lat, lon)
+    #         face = icosahedron.vertex2face(vertex)
+    #         if face in faces:
+    #             x, y = face.project_vertex(vertex)
+    #             draw.rectangle((x, y, x, y), fill=(0x99, 0x99, 0x99))
+    # 
+    # # intersections
+    # for lat in range(-90, 90, 15):
+    #     for lon in range(-180, 180, 15):
+    #         vertex = icosahedron.latlon2vertex(lat, lon)
+    #         face = icosahedron.vertex2face(vertex)
+    #         if face in faces:
+    #             x, y = face.project_vertex(vertex)
+    #             draw.rectangle((x-1, y-1, x, y), fill=(0xFF, 0xFF, 0xFF))
     
     img.save(out)
