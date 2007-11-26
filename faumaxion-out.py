@@ -1,4 +1,4 @@
-import sys, re, math, urllib, StringIO, optparse
+import sys, re, math, urllib, StringIO, optparse, threading, time
 import gnomonic, icosahedron, mesh, transform
 import PIL.Image as Image
 from PIL.ImageDraw import ImageDraw
@@ -7,13 +7,35 @@ UP = 'triangle points up'
 DOWN = 'triangle points down'
 DIM = 256 # known native size of a triangular tile
 
+class TilePaster(threading.Thread):
+    """ Thread for the pasting of tiles.
+    """
+    def __init__(self, img, srcPath, affineData, lock):
+        """ srcPath is for srcImage(), affineData is for PIL.Image.transform()
+        """
+        self.img = img
+        self.srcPath = srcPath
+        self.affineData = affineData
+        self.lock = lock
+        threading.Thread.__init__(self)
+
+    def run(self):
+        src = srcImage(self.srcPath).transform(self.img.size, Image.AFFINE, self.affineData)
+
+        if self.lock.acquire():
+            self.img.paste(src, (0, 0), src)
+            self.lock.release()
+
+        return
+        
 def srcImage(srcPath):
     """ Return a tile image for a source path list.
     """
     url = 'http://faumaxion.modestmaps.com/' + '/'.join(srcPath) + '.png'
     
-    print 'Downloading', url, '...'
-    return Image.open(StringIO.StringIO(urllib.urlopen(url).read()))
+    img = Image.open(StringIO.StringIO(urllib.urlopen(url).read()))
+    print 'Downloaded', url
+    return img
 
     return Image.open('out/tiles/' + '/'.join(srcPath) + '.png')
 
@@ -220,9 +242,18 @@ if __name__ == '__main__':
         if face in faces:
             applied += apply_face(img, ['%02d' % f], face, UP)
             
-    for (srcPath, affineData) in applied:
-        src = srcImage(srcPath).transform(img.size, Image.AFFINE, affineData)
-        img.paste(src, (0, 0), src)
+    lock = threading.Lock()
+    
+    pasters = [TilePaster(img, srcPath, affineData, lock) for (srcPath, affineData) in applied]
+    
+    for paster in pasters:
+        paster.start()
+
+    while True:
+        time.sleep(.25)
+        remaining = sum(map(int, [paster.isAlive() for paster in pasters]))
+        if remaining == 0:
+            break
     
     print 'Drawing lines...'
     draw = ImageDraw(img)
