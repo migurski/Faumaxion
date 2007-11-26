@@ -20,9 +20,11 @@ class TilePaster(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-        src = srcImage(self.srcPath).transform(self.img.size, Image.AFFINE, self.affineData)
+        # just the image acquisition happens outside the lock
+        src = srcImage(self.srcPath)
 
         if self.lock.acquire():
+            src = src.transform(self.img.size, Image.AFFINE, self.affineData)
             self.img.paste(src, (0, 0), src)
             self.lock.release()
 
