@@ -4,11 +4,14 @@ package com.teczno.faumaxion
 	import com.teczno.faumaxion.icosahedron.World;
 	import com.teczno.faumaxion.mesh.*;
 	
+	import flash.display.DisplayObject;
 	import flash.display.Loader;
+	import flash.display.Shape;
 	import flash.display.Sprite;
 	import flash.events.Event;
 	import flash.events.KeyboardEvent;
 	import flash.events.MouseEvent;
+	import flash.geom.Matrix;
 	import flash.geom.Point;
 	import flash.net.URLRequest;
 
@@ -39,12 +42,14 @@ package com.teczno.faumaxion
 		{
 			if(e.charCode == 0x2D) {
 				// "-" zoom out
-				zoom *= .5;
+				zoom /= Math.sqrt(2);
+				zoom = Math.max(32, zoom);
 				init();
 				
 			} else if(e.charCode == 0x3D) {
 				// "=" zoom in
-				zoom /= .5;
+				zoom *= Math.sqrt(2);
+				zoom = Math.min(4096, zoom);
 				init();
 			}
 		}
@@ -75,6 +80,8 @@ package com.teczno.faumaxion
 		
 		public function init():void
 		{
+			trace('init(), center: ' + center + ', zoom: ' + zoom);
+			
 			while(numChildren)
 				removeChildAt(0);
 				
@@ -109,7 +116,7 @@ package com.teczno.faumaxion
 			}
 		}
 		
-		public function faceOnStage(corners:Array, face:Face):Boolean
+		public function isFaceOnStage(corners:Array, face:Face):Boolean
 		{
 			var f1:Point = corners[0] as Point;
 			var f2:Point = corners[1] as Point;
@@ -134,7 +141,7 @@ package com.teczno.faumaxion
 			}
 		}
 		
-		public function applyFace(srcPath:Array, face:Face, point:String, corners:Array=null):void
+		private function applyFace(srcPath:Array, face:Face, point:String, corners:Array=null):void
 		{
 			if(!corners) {
 				corners = [];
@@ -144,7 +151,7 @@ package com.teczno.faumaxion
 				}
 			}
 			
-			if(!faceOnStage(corners, face))
+			if(!isFaceOnStage(corners, face))
 				return;
 			
 			var f1:Point = corners[0] as Point;
@@ -194,13 +201,36 @@ package com.teczno.faumaxion
 				i3 = new Point(Face.SIDE, 0);
 			}
 			
-			var loader:Loader = new Loader();
+			var tile:Sprite = new Sprite();
+			tile.graphics.beginFill(0x000033, .35);
+			tile.graphics.moveTo(f1.x, f1.y);
+			tile.graphics.lineTo(f2.x, f2.y);
+			tile.graphics.lineTo(f3.x, f3.y);
+			tile.graphics.lineTo(f1.x, f1.y);
+			tile.graphics.endFill();
+			addChild(tile);
 			
-			var t:Transformation = Transformation.deriveTransformation(i1, f1, i2, f2, i3, f3);
-			loader.transform.matrix = t.matrix();
+			var tileMask:Shape = new Shape();
+			tileMask.graphics.beginFill(0xFF00FF);
+			tileMask.graphics.moveTo(f1.x, f1.y);
+			tileMask.graphics.lineTo(f2.x, f2.y);
+			tileMask.graphics.lineTo(f3.x, f3.y);
+			tileMask.graphics.lineTo(f1.x, f1.y);
+			tileMask.graphics.endFill();
+			tile.addChild(tileMask);
+			
+			loadTile(tile, tileMask, 'http://faumaxion.modestmaps.com/' + srcPath.join('/') + '.jpg', Transformation.deriveTransformation(i1, f1, i2, f2, i3, f3).matrix());
+		}
+		
+		private function loadTile(tile:Sprite, mask:Shape, url:String, transform:Matrix):void
+		{
+			var loader:Loader = new Loader();
 
-			loader.load(new URLRequest('http://faumaxion.modestmaps.com/' + srcPath.join('/') + '.png'));
-			addChild(loader);
+			loader.transform.matrix = transform;
+
+			loader.load(new URLRequest(url));
+			tile.addChild(loader);
+			loader.mask = mask;
 		}
 	}
 }
