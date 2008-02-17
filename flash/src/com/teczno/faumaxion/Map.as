@@ -1,11 +1,14 @@
 package com.teczno.faumaxion
 {
 	import com.teczno.faumaxion.icosahedron.Face;
+	import com.teczno.faumaxion.icosahedron.World;
 	import com.teczno.faumaxion.mesh.*;
 	
 	import flash.display.Loader;
 	import flash.display.Sprite;
 	import flash.events.Event;
+	import flash.events.KeyboardEvent;
+	import flash.events.MouseEvent;
 	import flash.geom.Point;
 	import flash.net.URLRequest;
 
@@ -19,13 +22,65 @@ package com.teczno.faumaxion
 			this.center = center;
 			this.zoom = zoom;
 			
-			this.addEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
+			addEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
+		}
+		
+		public function onClicked(e:MouseEvent):void
+		{
+			var point:Point = new Point(e.stageX, e.stageY);
+			globalToLocal(point);
+			trace(point + ' --> ' + pointLocation(point));
+			
+			center = pointLocation(point);
+			init();
+		}
+		
+		public function onKeyPressed(e:KeyboardEvent):void
+		{
+			if(e.charCode == 0x2D) {
+				// "-" zoom out
+				zoom *= .5;
+				init();
+				
+			} else if(e.charCode == 0x3D) {
+				// "=" zoom in
+				zoom /= .5;
+				init();
+			}
+		}
+		
+		public function pointFace(point:Point):Face
+		{
+			var face:Face;
+			var distances:Array = [];
+			
+			for each(face in World.faces()) {
+				distances.push({distance: Point.distance(point, face.projectVertex(face.center)), face: face});
+			}
+			
+			distances.sortOn('distance', Array.NUMERIC);
+			
+			return distances[0]['face'] as Face;
+		}
+		
+		public function pointLocation(point:Point):Location
+		{
+			return pointFace(point).unprojectPoint(point);
 		}
 		
 		public function onAddedToStage(e:Event):void
 		{
-			var start:Face = Face.vertex2face(Face.location2vertex(center));
+			init();
+		}
+		
+		public function init():void
+		{
+			while(numChildren)
+				removeChildAt(0);
+				
+			var start:Face = Face.vertexFace(Face.locationVertex(center));
 			
+			start.reset();
 			start.orientNorth(center);
 			start.centerOn(center);
 			

@@ -26,18 +26,17 @@ package com.teczno.faumaxion.icosahedron
 			
 			this.path = path;
 			
-			transform = new Transformation(1/AVERAGE_EDGE_LENGTH, 0, 0,
-			                               0, -1/AVERAGE_EDGE_LENGTH, 0);
+			reset();
 		}
 		
 		public function centerLocation():Location
 		{
-			return vertex2location(center);
+			return vertexLocation(center);
 		}
 		
 		public function projectVertex(vertex:Vertex):Point
 		{
-			return projectLocation(vertex2location(vertex));
+			return projectLocation(vertexLocation(vertex));
 		}
 		
 		public function projectLocation(location:Location):Point
@@ -47,7 +46,12 @@ package com.teczno.faumaxion.icosahedron
 		
 		public function unprojectPoint(point:Point):Location
 		{
-			return Gnomonic.unproject(transform.unapply(point), centerLocation());
+			var location:Location = Gnomonic.unproject(transform.unapply(point), centerLocation());
+			
+			if(location.lon > 180)
+				location.lon -= 360;
+			
+			return location;
 		}
 		
 		public function adjoin(other:Face):void
@@ -128,6 +132,12 @@ package com.teczno.faumaxion.icosahedron
 			translate(-p.x, -p.y);
 		}
 		
+		public function reset():void
+		{
+			transform = new Transformation(1/AVERAGE_EDGE_LENGTH, 0, 0,
+			                               0, -1/AVERAGE_EDGE_LENGTH, 0);
+		}
+		
 		public function rotate(angle:Number=0):void
 		{
 			var theta:Number = Gnomonic.deg2rad(angle);
@@ -147,7 +157,7 @@ package com.teczno.faumaxion.icosahedron
 			transform = transform.multiply(t);
 		}
 		
-		public static function location2vertex(location:Location):Vertex
+		public static function locationVertex(location:Location):Vertex
 		{
 			if(location.lon < 0) {
 				location.lon += 360;
@@ -163,7 +173,7 @@ package com.teczno.faumaxion.icosahedron
 			return new Vertex(x, y, z);
 		}
 		
-		public static function vertex2location(vertex:Vertex):Location
+		public static function vertexLocation(vertex:Vertex):Location
 		{
 			var a:Number, phi:Number;
 			
@@ -198,18 +208,18 @@ package com.teczno.faumaxion.icosahedron
 			return new Location(90 - Gnomonic.rad2deg(theta), Gnomonic.rad2deg(phi));
 		}
 		
-		public static function vertex2face(vertex:Vertex):Face
+		public static function vertexFace(vertex:Vertex):Face
 		{
 			var face:Face;
 			var distances:Array = [];
 			
 			for each(face in World.faces()) {
-				distances.push([vertex.distance(face.center), face]);
+				distances.push({distance: vertex.distance(face.center), face: face});
 			}
 			
-			distances.sort();
+			distances.sortOn('distance', Array.NUMERIC);
 			
-			return distances[0][1] as Face;
+			return distances[0]['face'] as Face;
 		}
 
 		public static function deriveThirdPoint(p1:Point, p2:Point):Point

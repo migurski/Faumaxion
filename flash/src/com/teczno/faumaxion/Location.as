@@ -15,5 +15,10 @@ package com.teczno.faumaxion
 		{
 			return new Location(lat, lon);
 		}
+		
+		public function toString():String
+		{
+			return '(lat=' + lat.toFixed(3) + ', lon=' + lon.toFixed(3) + ')';
+		}
 	}
 }
