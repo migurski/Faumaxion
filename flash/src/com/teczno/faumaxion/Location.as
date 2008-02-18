@@ -20,5 +20,28 @@ package com.teczno.faumaxion
 		{
 			return '(lat=' + lat.toFixed(3) + ', lon=' + lon.toFixed(3) + ')';
 		}
+		
+		public function toPrettyString():String
+		{
+			var out:String = '';
+			
+			if(lat > 0) {
+				out += lat.toFixed(2) + '°N';
+				
+			} else {
+				out += Math.abs(lat).toFixed(2) + '°S';
+			}
+			
+			out += ', ';
+			
+			if(lon > 0) {
+				out += lon.toFixed(2) + '°E';
+				
+			} else {
+				out += Math.abs(lon).toFixed(2) + '°W';
+			}
+			
+			return out;
+		}
 	}
 }

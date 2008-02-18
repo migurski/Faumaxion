@@ -2,12 +2,13 @@ package com.teczno.faumaxion
 {
 	import com.teczno.faumaxion.icosahedron.Face;
 	
+	import flash.display.Loader;
 	import flash.display.Shape;
 	import flash.display.Sprite;
 	import flash.events.Event;
+	import flash.events.IOErrorEvent;
 	import flash.geom.Point;
 	import flash.net.URLRequest;
-	import flash.display.Loader;
 
 	public class Tile extends Sprite
 	{
@@ -15,6 +16,7 @@ package com.teczno.faumaxion
 		
 		private var face:Face;
 		private var direction:String;
+		private var loader:Loader;
 		
 		public static const UP:String = 'triangle points up';
 		public static const DOWN:String = 'triangle points down';
@@ -51,12 +53,23 @@ package com.teczno.faumaxion
 			tileMask.graphics.endFill();
 			addChild(tileMask);
 
-			var loader:Loader = new Loader();
+			loader = new Loader();
+			loader.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, onLoadError);
 
 			loader.load(url);
 			loader.mask = tileMask;
 
 			addChild(loader);
+			addEventListener(Event.REMOVED_FROM_STAGE, onRemovedFromStage);
+		}
+		
+		public function onRemovedFromStage(e:Event):void
+		{
+			try {
+				loader.close();
+			} catch(e:Error) {
+				// who cares
+			}
 		}
 		
 		public function cornerPoints():Array
@@ -75,6 +88,11 @@ package com.teczno.faumaxion
 			}
 			
 			return [i1, i2, i3];
+		}
+		
+		public function onLoadError(e:Event):void
+		{
+			// don't care
 		}
 	}
 }

@@ -23,6 +23,8 @@ package com.teczno.faumaxion
 		private var tiles:Dictionary;
 		private var lastMouse:Point;
 		
+		public static const EVENT_MAP_REDRAWN:String = 'Map has been redrawn';
+		
 		public function Map(center:Location, zoom:Number)
 		{
 			this.center = center;
@@ -35,10 +37,10 @@ package com.teczno.faumaxion
 		public function onAddedToStage(e:Event):void
 		{
 			addEventListener(MouseEvent.MOUSE_DOWN, onPressed);
-			init();
+			redraw();
 		}
 		
-		public function init():void
+		public function redraw():void
 		{
 			trace('init(), center: ' + center + ', zoom: ' + zoom);
 			
@@ -66,6 +68,8 @@ package com.teczno.faumaxion
 					delete tiles[srcPath];
 				}
 			}
+			
+			dispatchEvent(new Event(EVENT_MAP_REDRAWN));
 		}
 		
 		public function onClicked(e:MouseEvent):void
@@ -75,21 +79,21 @@ package com.teczno.faumaxion
 			trace(point + ' --> ' + pointLocation(point));
 			
 			center = pointLocation(point);
-			init();
+			redraw();
 		}
 		
 		public function zoomIn(e:Event=null):void
 		{
 			zoom *= Math.sqrt(2);
 			zoom = Math.min(4096, zoom);
-			init();
+			redraw();
 		}
 		
 		public function zoomOut(e:Event=null):void
 		{
 			zoom /= Math.sqrt(2);
 			zoom = Math.max(32, zoom);
-			init();
+			redraw();
 		}
 		
 		public function onPressed(e:MouseEvent):void
@@ -115,7 +119,7 @@ package com.teczno.faumaxion
 			trace(newCenter + ' --> ' + pointLocation(newCenter));
 			
 			center = pointLocation(newCenter);
-			init();
+			redraw();
 			
 			lastMouse = nowMouse.clone();
 		}
@@ -141,9 +145,28 @@ package com.teczno.faumaxion
 			return distances[0]['face'] as Face;
 		}
 		
+		public function locationFace(location:Location):Face
+		{
+			var face:Face;
+			var distances:Array = [];
+			
+			for each(face in World.faces()) {
+				distances.push({distance: Point.distance(face.projectLocation(location), face.projectVertex(face.center)), face: face});
+			}
+			
+			distances.sortOn('distance', Array.NUMERIC);
+			
+			return distances[0]['face'] as Face;
+		}
+		
 		public function pointLocation(point:Point):Location
 		{
 			return pointFace(point).unprojectPoint(point);
+		}
+		
+		public function locationPoint(location:Location):Point
+		{
+			return locationFace(location).projectLocation(location);
 		}
 		
 		public function isFaceOnStage(corners:Array, face:Face):Boolean
