@@ -14,16 +14,19 @@ package com.teczno.faumaxion
 	import flash.geom.Matrix;
 	import flash.geom.Point;
 	import flash.net.URLRequest;
+	import flash.utils.Dictionary;
 
 	public class Map extends Sprite
 	{
 		private var center:Location;
 		private var zoom:Number;
+		private var tiles:Dictionary;
 		
 		public function Map(center:Location, zoom:Number)
 		{
 			this.center = center;
 			this.zoom = zoom;
+			this.tiles = new Dictionary();
 			
 			addEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
 		}
@@ -82,9 +85,6 @@ package com.teczno.faumaxion
 		{
 			trace('init(), center: ' + center + ', zoom: ' + zoom);
 			
-			while(numChildren)
-				removeChildAt(0);
-				
 			var start:Face = Face.vertexFace(Face.locationVertex(center));
 			
 			start.reset();
@@ -94,10 +94,12 @@ package com.teczno.faumaxion
 			start.scale(zoom);
 			start.translate(stage.stageWidth/2, stage.stageHeight/2);
 			
+			var applied:Array = [];
+			
 			for each(var face:Face in start.arrangeNeighbors('LAND')) {
-				applyFace([face.path], face, 'UP');
-				continue;
+				applied = applied.concat(applyFace(face.path, face, Tile.UP));
 				
+				/*
 				for each(var edge:Edge in face.edges()) {
 					var p1:Point = face.projectVertex(edge.vertexA);
 					var p2:Point = face.projectVertex(edge.vertexB);
@@ -112,6 +114,17 @@ package com.teczno.faumaxion
 					graphics.moveTo(p1.x, p1.y);
 					graphics.lineTo(p2.x, p2.y);
 					graphics.lineStyle();
+				}
+				*/
+			}
+
+			// remove any tiles that were not part of this application process
+			for(var srcPath:String in tiles) {
+				var tile:Tile = tiles[srcPath] as Tile;
+
+				if(tile && applied.indexOf(tile) == -1) {
+					removeChild(tile);
+					delete tiles[srcPath];
 				}
 			}
 		}
@@ -141,7 +154,7 @@ package com.teczno.faumaxion
 			}
 		}
 		
-		private function applyFace(srcPath:Array, face:Face, point:String, corners:Array=null):void
+		private function applyFace(srcPath:String, face:Face, direction:String, corners:Array=null):Array
 		{
 			if(!corners) {
 				corners = [];
@@ -150,9 +163,11 @@ package com.teczno.faumaxion
 					corners.push(face.projectVertex(vertex));
 				}
 			}
-			
+
 			if(!isFaceOnStage(corners, face))
-				return;
+				return [];
+			
+			var applied:Array = [];
 			
 			var f1:Point = corners[0] as Point;
 			var f2:Point = corners[1] as Point;
@@ -174,63 +189,30 @@ package com.teczno.faumaxion
 				                         k: [f23, f31, f12]};
 				
 				for(var p:String in subcorners) {
-					var nextSrcPath:Array = srcPath.slice();
-					nextSrcPath.push(p);
-					
 					if(p == 'k') {
-						applyFace(nextSrcPath, face, (point == 'UP' ? 'DOWN' : 'UP'), subcorners[p] as Array);
+						applied = applied.concat(applyFace(srcPath+'/'+p, face, (direction == Tile.UP ? Tile.DOWN : Tile.UP), subcorners[p] as Array));
 
 					} else {
-						applyFace(nextSrcPath, face, point, subcorners[p] as Array);
+						applied = applied.concat(applyFace(srcPath+'/'+p, face, direction, subcorners[p] as Array));
 					}
 				}
 				
-				return;
+				return applied;
 			}
 			
-			var i1:Point, i2:Point, i3:Point;
+			var tile:Tile = tiles[srcPath] as Tile;
 			
-			if(point == 'UP') {
-				i1 = new Point(Face.SIDE/2, Face.SIDE - Face.SIDE * Math.sin(Math.PI/3));
-				i2 = new Point(Face.SIDE, Face.SIDE);
-				i3 = new Point(0, Face.SIDE);
-
-			} else if(point == 'DOWN') {
-				i1 = new Point(Face.SIDE/2, Face.SIDE * Math.sin(Math.PI/3));
-				i2 = new Point(0, 0);
-				i3 = new Point(Face.SIDE, 0);
+			if(!tile) {
+				// if one does not already exist...
+				tile = new Tile(face, new URLRequest('http://faumaxion.modestmaps.com/' + srcPath + '.jpg'), direction);
+				tiles[srcPath] = tile;
+				addChild(tile);
 			}
 			
-			var tile:Sprite = new Sprite();
-			tile.graphics.beginFill(0x000033, .35);
-			tile.graphics.moveTo(f1.x, f1.y);
-			tile.graphics.lineTo(f2.x, f2.y);
-			tile.graphics.lineTo(f3.x, f3.y);
-			tile.graphics.lineTo(f1.x, f1.y);
-			tile.graphics.endFill();
-			addChild(tile);
-			
-			var tileMask:Shape = new Shape();
-			tileMask.graphics.beginFill(0xFF00FF);
-			tileMask.graphics.moveTo(f1.x, f1.y);
-			tileMask.graphics.lineTo(f2.x, f2.y);
-			tileMask.graphics.lineTo(f3.x, f3.y);
-			tileMask.graphics.lineTo(f1.x, f1.y);
-			tileMask.graphics.endFill();
-			tile.addChild(tileMask);
-			
-			loadTile(tile, tileMask, 'http://faumaxion.modestmaps.com/' + srcPath.join('/') + '.jpg', Transformation.deriveTransformation(i1, f1, i2, f2, i3, f3).matrix());
-		}
-		
-		private function loadTile(tile:Sprite, mask:Shape, url:String, transform:Matrix):void
-		{
-			var loader:Loader = new Loader();
+			var corners:Array = tile.cornerPoints();
+			tile.transform.matrix = Transformation.deriveTransformation(corners[0] as Point, f1, corners[1] as Point, f2, corners[2] as Point, f3).matrix();
 
-			loader.transform.matrix = transform;
-
-			loader.load(new URLRequest(url));
-			tile.addChild(loader);
-			loader.mask = mask;
+			return [tile];
 		}
 	}
 }
