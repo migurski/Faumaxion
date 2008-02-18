@@ -21,6 +21,7 @@ package com.teczno.faumaxion
 		private var center:Location;
 		private var zoom:Number;
 		private var tiles:Dictionary;
+		private var lastMouse:Point;
 		
 		public function Map(center:Location, zoom:Number)
 		{
@@ -31,53 +32,9 @@ package com.teczno.faumaxion
 			addEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
 		}
 		
-		public function onClicked(e:MouseEvent):void
-		{
-			var point:Point = new Point(e.stageX, e.stageY);
-			globalToLocal(point);
-			trace(point + ' --> ' + pointLocation(point));
-			
-			center = pointLocation(point);
-			init();
-		}
-		
-		public function onKeyPressed(e:KeyboardEvent):void
-		{
-			if(e.charCode == 0x2D) {
-				// "-" zoom out
-				zoom /= Math.sqrt(2);
-				zoom = Math.max(32, zoom);
-				init();
-				
-			} else if(e.charCode == 0x3D) {
-				// "=" zoom in
-				zoom *= Math.sqrt(2);
-				zoom = Math.min(4096, zoom);
-				init();
-			}
-		}
-		
-		public function pointFace(point:Point):Face
-		{
-			var face:Face;
-			var distances:Array = [];
-			
-			for each(face in World.faces()) {
-				distances.push({distance: Point.distance(point, face.projectVertex(face.center)), face: face});
-			}
-			
-			distances.sortOn('distance', Array.NUMERIC);
-			
-			return distances[0]['face'] as Face;
-		}
-		
-		public function pointLocation(point:Point):Location
-		{
-			return pointFace(point).unprojectPoint(point);
-		}
-		
 		public function onAddedToStage(e:Event):void
 		{
+			addEventListener(MouseEvent.MOUSE_DOWN, onPressed);
 			init();
 		}
 		
@@ -98,24 +55,6 @@ package com.teczno.faumaxion
 			
 			for each(var face:Face in start.arrangeNeighbors('LAND')) {
 				applied = applied.concat(applyFace(face.path, face, Tile.UP));
-				
-				/*
-				for each(var edge:Edge in face.edges()) {
-					var p1:Point = face.projectVertex(edge.vertexA);
-					var p2:Point = face.projectVertex(edge.vertexB);
-					
-					if(edge.kind == 'LAND') {
-						graphics.lineStyle(2, 0x00CC00);
-
-					} else if(edge.kind == 'WATER') {
-						graphics.lineStyle(2, 0x0066FF);
-					}
-
-					graphics.moveTo(p1.x, p1.y);
-					graphics.lineTo(p2.x, p2.y);
-					graphics.lineStyle();
-				}
-				*/
 			}
 
 			// remove any tiles that were not part of this application process
@@ -127,6 +66,84 @@ package com.teczno.faumaxion
 					delete tiles[srcPath];
 				}
 			}
+		}
+		
+		public function onClicked(e:MouseEvent):void
+		{
+			var point:Point = new Point(e.stageX, e.stageY);
+			globalToLocal(point);
+			trace(point + ' --> ' + pointLocation(point));
+			
+			center = pointLocation(point);
+			init();
+		}
+		
+		public function zoomIn(e:Event=null):void
+		{
+			zoom *= Math.sqrt(2);
+			zoom = Math.min(4096, zoom);
+			init();
+		}
+		
+		public function zoomOut(e:Event=null):void
+		{
+			zoom /= Math.sqrt(2);
+			zoom = Math.max(32, zoom);
+			init();
+		}
+		
+		public function onPressed(e:MouseEvent):void
+		{
+			stage.addEventListener(MouseEvent.MOUSE_MOVE, onDragged);
+			stage.addEventListener(MouseEvent.MOUSE_UP, onReleased);
+			stage.addEventListener(Event.MOUSE_LEAVE, onReleased);
+			
+			lastMouse = new Point(e.stageX, e.stageY);
+		}
+			
+		public function onDragged(e:MouseEvent):void
+		{
+			var nowMouse:Point = new Point(e.stageX, e.stageY);
+			var diffMouse:Point = lastMouse.subtract(nowMouse);
+			
+			trace(nowMouse + ' - ' + lastMouse + ' = ' + diffMouse);
+			
+			var stageCenter:Point = new Point(stage.stageWidth/2, stage.stageHeight/2);
+			var newCenter:Point = stageCenter.add(diffMouse);
+			
+			globalToLocal(newCenter);
+			trace(newCenter + ' --> ' + pointLocation(newCenter));
+			
+			center = pointLocation(newCenter);
+			init();
+			
+			lastMouse = nowMouse.clone();
+		}
+		
+		public function onReleased(e:Event):void
+		{
+			stage.removeEventListener(MouseEvent.MOUSE_MOVE, onDragged);
+			stage.removeEventListener(MouseEvent.MOUSE_UP, onReleased);
+			stage.removeEventListener(Event.MOUSE_LEAVE, onReleased);
+		}
+		
+		public function pointFace(point:Point):Face
+		{
+			var face:Face;
+			var distances:Array = [];
+			
+			for each(face in World.faces()) {
+				distances.push({distance: Point.distance(point, face.projectVertex(face.center)), face: face});
+			}
+			
+			distances.sortOn('distance', Array.NUMERIC);
+			
+			return distances[0]['face'] as Face;
+		}
+		
+		public function pointLocation(point:Point):Location
+		{
+			return pointFace(point).unprojectPoint(point);
 		}
 		
 		public function isFaceOnStage(corners:Array, face:Face):Boolean
