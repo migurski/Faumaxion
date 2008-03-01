@@ -114,11 +114,13 @@ package com.teczno.faumaxion.icosahedron
 			return seen;
 		}
 		
+		/*
 		public function orientNorth(location:Location):void
 		{
 			// invert the current deviation from north
 			rotate(-locationOrientation(location));
 		}
+		*/
 		
 		public function centerOn(location:Location):void
 		{

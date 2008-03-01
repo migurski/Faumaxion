@@ -16,6 +16,8 @@ package com.teczno.faumaxion
 	import flash.net.URLRequest;
 	import flash.utils.Dictionary;
 	
+	import gs.TweenLite;
+	
 	public class Map extends Sprite
 	{
 		private var center:Location;
@@ -37,21 +39,28 @@ package com.teczno.faumaxion
 		public function onAddedToStage(e:Event):void
 		{
 			addEventListener(MouseEvent.MOUSE_DOWN, onPressed);
-			redraw();
+			redraw(-orientation);
 		}
 		
-		public function redraw(reorient:Boolean=true):void
+		public function get orientation():Number
+		{
+			var start:Face = Face.vertexFace(Face.locationVertex(center));
+			return start.locationOrientation(center);
+		}
+		
+		public function set orientation(angle:Number):void
+		{
+			redraw(angle - orientation);
+		}
+		
+		public function redraw(delta:Number=0):void
 		{
 			trace('init(), center: ' + center + ', zoom: ' + zoom);
 			
 			var start:Face = Face.vertexFace(Face.locationVertex(center));
 			
 			start.reset();
-			
-			if(reorient) {
-				start.orientNorth(center);
-			}
-
+			start.rotate(delta);
 			start.centerOn(center);
 			
 			start.scale(zoom);
@@ -83,21 +92,21 @@ package com.teczno.faumaxion
 			trace(point + ' --> ' + pointLocation(point));
 			
 			center = pointLocation(point);
-			redraw();
+			redraw(-orientation);
 		}
 		
 		public function zoomIn(e:Event=null):void
 		{
 			zoom *= Math.sqrt(2);
 			zoom = Math.min(4096, zoom);
-			redraw(false);
+			redraw(0);
 		}
 		
 		public function zoomOut(e:Event=null):void
 		{
 			zoom /= Math.sqrt(2);
 			zoom = Math.max(32, zoom);
-			redraw(false);
+			redraw(0);
 		}
 		
 		public function onPressed(e:MouseEvent):void
@@ -123,14 +132,14 @@ package com.teczno.faumaxion
 			trace(newCenter + ' --> ' + pointLocation(newCenter));
 			
 			center = pointLocation(newCenter);
-			redraw(false);
+			redraw(0);
 			
 			lastMouse = nowMouse.clone();
 		}
 		
 		public function onReleased(e:Event):void
 		{
-			redraw();
+			gs.TweenLite.to(this, .35, {'orientation': 0});
 			
 			stage.removeEventListener(MouseEvent.MOUSE_MOVE, onDragged);
 			stage.removeEventListener(MouseEvent.MOUSE_UP, onReleased);
