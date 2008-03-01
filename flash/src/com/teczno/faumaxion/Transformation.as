@@ -22,6 +22,11 @@ package com.teczno.faumaxion
 			this.cy = cy;
 		}
 		
+		public function toString():String
+		{
+			return 'T(' + ax + ', ' + bx + ', ' + cx + ' / ' + ay + ', ' + by + ', ' + cy + ')';
+		}
+		
 		public function apply(p:Point):Point
 		{
 			return new Point(ax * p.x + bx * p.y + cx,

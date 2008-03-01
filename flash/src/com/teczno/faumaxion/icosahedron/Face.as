@@ -116,14 +116,8 @@ package com.teczno.faumaxion.icosahedron
 		
 		public function orientNorth(location:Location):void
 		{
-			var p1:Point = projectLocation(location);
-			var p2:Point = projectLocation(new Location(location.lat + 1, location.lon));
-			
-			// -90 deg is the desired rotation
-			var theta:Number = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-			var angle:Number = -90 - Gnomonic.rad2deg(theta);
-			
-			rotate(angle);
+			// invert the current deviation from north
+			rotate(-locationOrientation(location));
 		}
 		
 		public function centerOn(location:Location):void
@@ -134,8 +128,28 @@ package com.teczno.faumaxion.icosahedron
 		
 		public function reset():void
 		{
+			var angle:Number = 0;
+			
+			try {
+				// figure out the *current* angle of rotation so it can be preserved
+				angle = locationOrientation(centerLocation());
+			} catch(e:Error) {
+				// it's possible that orientation fails because there's no center just yet
+			}
+
 			transform = new Transformation(1/AVERAGE_EDGE_LENGTH, 0, 0,
 			                               0, -1/AVERAGE_EDGE_LENGTH, 0);
+			
+			rotate(angle);
+		}
+		
+		public function locationOrientation(location:Location):Number
+		{
+			var p1:Point = projectLocation(location);
+			var p2:Point = projectLocation(new Location(location.lat + 1, location.lon));
+			
+			// add 90° so angle points toward north and zero is up
+			return 90 + Gnomonic.rad2deg(Math.atan2(p2.y - p1.y, p2.x - p1.x));
 		}
 		
 		public function rotate(angle:Number=0):void

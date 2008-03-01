@@ -15,7 +15,7 @@ package com.teczno.faumaxion
 	import flash.geom.Point;
 	import flash.net.URLRequest;
 	import flash.utils.Dictionary;
-
+	
 	public class Map extends Sprite
 	{
 		private var center:Location;
@@ -40,14 +40,18 @@ package com.teczno.faumaxion
 			redraw();
 		}
 		
-		public function redraw():void
+		public function redraw(reorient:Boolean=true):void
 		{
 			trace('init(), center: ' + center + ', zoom: ' + zoom);
 			
 			var start:Face = Face.vertexFace(Face.locationVertex(center));
 			
 			start.reset();
-			start.orientNorth(center);
+			
+			if(reorient) {
+				start.orientNorth(center);
+			}
+
 			start.centerOn(center);
 			
 			start.scale(zoom);
@@ -86,14 +90,14 @@ package com.teczno.faumaxion
 		{
 			zoom *= Math.sqrt(2);
 			zoom = Math.min(4096, zoom);
-			redraw();
+			redraw(false);
 		}
 		
 		public function zoomOut(e:Event=null):void
 		{
 			zoom /= Math.sqrt(2);
 			zoom = Math.max(32, zoom);
-			redraw();
+			redraw(false);
 		}
 		
 		public function onPressed(e:MouseEvent):void
@@ -119,13 +123,15 @@ package com.teczno.faumaxion
 			trace(newCenter + ' --> ' + pointLocation(newCenter));
 			
 			center = pointLocation(newCenter);
-			redraw();
+			redraw(false);
 			
 			lastMouse = nowMouse.clone();
 		}
 		
 		public function onReleased(e:Event):void
 		{
+			redraw();
+			
 			stage.removeEventListener(MouseEvent.MOUSE_MOVE, onDragged);
 			stage.removeEventListener(MouseEvent.MOUSE_UP, onReleased);
 			stage.removeEventListener(Event.MOUSE_LEAVE, onReleased);
