@@ -45,7 +45,14 @@ package com.teczno.faumaxion
 		public function get orientation():Number
 		{
 			var start:Face = Face.vertexFace(Face.locationVertex(center));
-			return start.locationOrientation(center);
+			var angle:Number = start.locationOrientation(center);
+			
+			if(angle > 180) {
+				// makes rotations less jarring for bottom-left quadrant
+				angle -= 360;
+			}
+			
+			return angle;
 		}
 		
 		public function set orientation(angle:Number):void
