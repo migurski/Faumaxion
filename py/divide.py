@@ -1,4 +1,4 @@
-import os, os.path, sys, math, icosahedron, transform, struct
+import os, os.path, sys, math, Faumaxion, struct
 import PIL.Image as Image
 from PIL.ImageDraw import ImageDraw
 
@@ -22,7 +22,7 @@ def latlon_rgba(lat, lon):
     
     return r, g, b, 0xFF
 
-def decompose(face, name, planar_points, point, depth=4):
+def decompose(face, name, planar_points, point, depth=6):
     """ Vertices are expected in clockwise order, with first being the point.
     """
     if point == UP:
@@ -46,7 +46,7 @@ def decompose(face, name, planar_points, point, depth=4):
     (cx1, cy1), (cx2, cy2), (cx3, cy3) = coords
     
     # the transform from planar points to image x, y coords
-    t = transform.deriveTransformation(px1, py1, cx1, cy1, px2, py2, cx2, cy2, px3, py3, cx3, cy3)
+    t = Faumaxion.transform.deriveTransformation(px1, py1, cx1, cy1, px2, py2, cx2, cy2, px3, py3, cx3, cy3)
     
     if depth:
         # there's further to go; gather up sub-triangles and stitch them together
@@ -130,8 +130,8 @@ def decompose(face, name, planar_points, point, depth=4):
 if __name__ == '__main__':
     
     for f in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20):
-        face = icosahedron.faces[f]
-        latlons = map(icosahedron.vertex2latlon, face.vertices())
+        face = Faumaxion.icosahedron.faces[f]
+        latlons = map(Faumaxion.icosahedron.vertex2latlon, face.vertices())
         xys = map(face.project_vertex, face.vertices())
         
         (x1, y1), (x2, y2), (x3, y3) = xys
